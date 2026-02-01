@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>クリップボード画像リサイズ (Office対応版)</title>
+    <style>
+        body {
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            text-align: center;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        /* ペーストエリアのデザイン */
+        #pasteArea {
+            border: 3px dashed #bbb;
+            background-color: #fafafa;
+            padding: 40px;
+            margin-bottom: 20px;
+            color: #777;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        #pasteArea.active {
+            border-color: #007bff;
+            background-color: #eef7ff;
+            color: #007bff;
+        }
+        
+        img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            display: block;
+            margin: 15px auto;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .preview-box {
+            margin: 30px 0;
+            display: none;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        
+        /* ボタンのデザイン */
+        .btn-group {
+            margin: 10px 0;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn-primary:hover { background-color: #0056b3; }
+        
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+        .btn-success:hover { background-color: #1e7e34; }
+
+        .btn-office {
+            background-color: #6f42c1; /* Officeっぽい紫 */
+            color: white;
+        }
+        .btn-office:hover { background-color: #59359a; }
+
+        .status {
+            margin-top: 15px;
+            font-weight: bold;
+            color: #28a745;
+            min-height: 24px;
+        }
+        .error { color: #dc3545; }
+        
+        small { color: #666; font-size: 0.9em; display: block; margin-top: 5px;}
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>画像リサイズ (1/2サイズ)</h2>
+    <p>PowerPointやOneNote対応版</p>
+
+    <div class="btn-group">
+        <button id="readClipboardBtn" class="btn-office">📋 クリップボードから読み込む (Office対応)</button>
+    </div>
+    <small>※PowerPoint/OneNoteからは上のボタンを使ってください</small>
+    <br>
+
+    <div id="pasteArea">
+        または、ここに画像をペースト (Ctrl+V) 
+    </div>
+
+    <div id="msg" class="status"></div>
+
+    <div id="originalPreviewBox" class="preview-box">
+        <h3>元画像 (<span id="orgSize"></span>)</h3>
+        <img id="originalImage" src="" alt="Original Preview">
+        <button id="compressBtn" class="btn-primary">⬇️ 1/2サイズに圧縮する</button>
+    </div>
+
+    <div id="resultPreviewBox" class="preview-box">
+        <h3>圧縮結果 (<span id="newSize"></span>)</h3>
+        <canvas id="canvas" style="display:none;"></canvas>
+        <img id="resultImage" src="" alt="Result Preview">
+        <br>
+        <button id="copyBtn" class="btn-success">画像をコピー</button>
+    </div>
+</div>
+
+<script>
+    const pasteArea = document.getElementById('pasteArea');
+    const originalImage = document.getElementById('originalImage');
+    const resultImage = document.getElementById('resultImage');
+    const canvas = document.getElementById('canvas');
+    const compressBtn = document.getElementById('compressBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const readClipboardBtn = document.getElementById('readClipboardBtn');
+    const msg = document.getElementById('msg');
+    
+    const originalPreviewBox = document.getElementById('originalPreviewBox');
+    const resultPreviewBox = document.getElementById('resultPreviewBox');
+
+    // ---------------------------------------------------------
+    // 1. 強力な読み込み (Async Clipboard API) - Office対応の鍵
+    // ---------------------------------------------------------
+    readClipboardBtn.addEventListener('click', async () => {
+        msg.textContent = "";
+        msg.className = "status";
+
+        try {
+            // ブラウザにクリップボードの中身を直接問い合わせる
+            const clipboardItems = await navigator.clipboard.read();
+            let blob = null;
+
+            for (const item of clipboardItems) {
+                // 画像タイプを持っているか探す
+                // Office系は 'image/png' を持っていることが多い
+                const imageTypes = item.types.filter(type => type.startsWith('image/'));
+                
+                if (imageTypes.length > 0) {
+                    // 最初に見つかった画像タイプを取得 (通常はpngを優先)
+                    let targetType = imageTypes.includes('image/png') ? 'image/png' : imageTypes[0];
+                    blob = await item.getType(targetType);
+                    break; 
+                }
+            }
+
+            if (blob) {
+                loadImage(blob);
+                msg.textContent = "画像を読み込みました";
+            } else {
+                showError("クリップボードに画像データが見つかりませんでした。\nテキストやファイルではなく、画像自体をコピーしていますか？");
+            }
+
+        } catch (err) {
+            console.error(err);
+            // 許可が拒否された場合や、HTTPSでない場合など
+            showError("読み込みに失敗しました。ブラウザが「貼り付けの許可」を求めた場合は「許可」を押してください。\n(Firefoxではこの機能が制限されている場合があります)");
+        }
+    });
+
+    // ---------------------------------------------------------
+    // 2. 従来のペースト (Ctrl+V)
+    // ---------------------------------------------------------
+    document.addEventListener('paste', handlePaste);
+
+    function handlePaste(e) {
+        msg.textContent = "";
+        const items = e.clipboardData.items;
+        let blob = null;
+
+        for (let i = 0; i < items.length; i++) {
+            // 画像タイプなら取得
+            if (items[i].type.indexOf('image') !== -1) {
+                blob = items[i].getAsFile();
+                break;
+            }
+        }
+
+        if (blob) {
+            loadImage(blob);
+            pasteArea.textContent = "画像を受け付けました";
+        } else {
+            // Ctrl+Vで失敗した場合は、ボタン利用を促す
+            // (Officeのデータ構造が複雑でCtrl+Vでは取れない場合があるため)
+            showError("Ctrl+Vでの画像取得に失敗しました。\n上の「📋 クリップボードから読み込む」ボタンを試してください。");
+        }
+    }
+
+    // 共通: 画像描画処理
+    function loadImage(blob) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            originalImage.src = event.target.result;
+            // 読み込み完了ハンドラ
+            originalImage.onload = () => {
+                document.getElementById('orgSize').textContent = `${originalImage.naturalWidth} x ${originalImage.naturalHeight}`;
+                originalPreviewBox.style.display = 'block';
+                resultPreviewBox.style.display = 'none';
+            };
+        };
+        reader.readAsDataURL(blob);
+    }
+
+    function showError(text) {
+        msg.textContent = text;
+        msg.className = "status error";
+    }
+
+    // ---------------------------------------------------------
+    // 3. 圧縮処理
+    // ---------------------------------------------------------
+    compressBtn.addEventListener('click', () => {
+        if (!originalImage.src) return;
+
+        const ctx = canvas.getContext('2d');
+        const width = originalImage.naturalWidth;
+        const height = originalImage.naturalHeight;
+        const newWidth = Math.floor(width / 2);
+        const newHeight = Math.floor(height / 2);
+
+        canvas.width = newWidth;
+        canvas.height = newHeight;
+        ctx.drawImage(originalImage, 0, 0, newWidth, newHeight);
+
+        resultImage.src = canvas.toDataURL('image/png');
+        document.getElementById('newSize').textContent = `${newWidth} x ${newHeight}`;
+        resultPreviewBox.style.display = 'block';
+    });
+
+    // ---------------------------------------------------------
+    // 4. クリップボードへの書き込み
+    // ---------------------------------------------------------
+    copyBtn.addEventListener('click', () => {
+        canvas.toBlob(async (blob) => {
+            try {
+                const item = new ClipboardItem({ 'image/png': blob });
+                await navigator.clipboard.write([item]);
+                msg.textContent = "クリップボードにコピーしました！ (Ctrl+Vで貼り付け可能)";
+                msg.className = "status";
+            } catch (err) {
+                console.error(err);
+                showError("コピー失敗: HTTPS環境で実行してください。");
+            }
+        });
+    });
+
+    // ドラッグ＆ドロップの演出
+    ['dragenter', 'dragover'].forEach(evt => {
+        pasteArea.addEventListener(evt, (e) => { e.preventDefault(); pasteArea.classList.add('active'); });
+    });
+    ['dragleave', 'drop'].forEach(evt => {
+        pasteArea.addEventListener(evt, (e) => { e.preventDefault(); pasteArea.classList.remove('active'); });
+    });
+</script>
+
+</body>
+</html>
