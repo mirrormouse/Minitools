@@ -19,8 +19,35 @@
             border-radius: 8px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
+
+        /* 操作エリアのレイアウト */
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        /* プルダウンのデザイン */
+        select {
+            padding: 10px 15px;
+            font-size: 18px;
+            border-radius: 8px;
+            border: 2px solid #007bff;
+            background-color: #fff;
+            color: #333;
+            cursor: pointer;
+            outline: none;
+            width: 100%;
+            max-width: 300px;
+            text-align: center;
+        }
+        select:focus {
+            box-shadow: 0 0 0 3px rgba(0,123,255,0.25);
+        }
         
-        /* メインボタンを目立たせる */
+        /* メインボタン */
         .btn-magic {
             background: linear-gradient(135deg, #6f42c1, #007bff);
             color: white;
@@ -58,7 +85,7 @@
             padding: 10px;
             border-radius: 8px;
             background: #fafafa;
-            display: none; /* 初期非表示 */
+            display: none;
         }
         img {
             max-width: 100%;
@@ -66,7 +93,7 @@
             border: 1px solid #ddd;
             display: block;
             margin: 10px auto;
-            max-height: 300px; /* 表示が大きくなりすぎないように */
+            max-height: 300px;
             object-fit: contain;
         }
         
@@ -86,20 +113,28 @@
 <body>
 
 <div class="container">
-    <h2>クリップボード画像リサイザー (1/2)</h2>
-    <p>PowerPointやOneNoteなどをコピーした後、下のボタンを押すだけで完了します。</p>
+    <h2>クリップボード画像リサイザー</h2>
+    <p>圧縮率を選んでボタンを押してください</p>
 
-    <button id="magicBtn" class="btn-magic">
-        ⚡ 読み込み → 圧縮 → コピーを実行
-    </button>
+    <div class="controls">
+        <select id="ratioSelect">
+            <option value="2" selected>1/2 サイズ (50%)</option>
+            <option value="4">1/4 サイズ (25%)</option>
+            <option value="6">1/6 サイズ (約16%)</option>
+        </select>
+
+        <button id="magicBtn" class="btn-magic">
+            ⚡ 実行してコピー
+        </button>
+    </div>
     
     <div id="msg" class="status"></div>
-    <small>※初回はブラウザ左上に「許可」を求めるポップアップが出ることがあります</small>
+    <small>※PowerPoint等でコピーしてからボタンを押してください</small>
 
     <div id="previewContainer" class="preview-container">
         <div id="resultBox" class="preview-box" style="border: 2px solid #28a745; background: #eeffee;">
-            <h3>✅ クリップボードにコピー済み</h3>
-            <p>サイズ: <span id="newSize"></span> (1/2)</p>
+            <h3>✅ コピー完了</h3>
+            <p>結果: <span id="resultInfo"></span></p>
             <img id="resultImage" src="" alt="Result">
         </div>
 
@@ -115,17 +150,17 @@
 
 <script>
     const magicBtn = document.getElementById('magicBtn');
+    const ratioSelect = document.getElementById('ratioSelect');
     const msg = document.getElementById('msg');
     const canvas = document.getElementById('canvas');
     
-    // プレビュー用要素
     const previewContainer = document.getElementById('previewContainer');
     const originalBox = document.getElementById('originalBox');
     const resultBox = document.getElementById('resultBox');
     const originalImage = document.getElementById('originalImage');
     const resultImage = document.getElementById('resultImage');
     const orgSizeSpan = document.getElementById('orgSize');
-    const newSizeSpan = document.getElementById('newSize');
+    const resultInfoSpan = document.getElementById('resultInfo');
 
     magicBtn.addEventListener('click', async () => {
         // UI初期化
@@ -136,13 +171,10 @@
         resultBox.style.display = 'none';
 
         try {
-            // -------------------------------------------------
-            // 1. クリップボードから読み込み (Read)
-            // -------------------------------------------------
+            // 1. クリップボードから読み込み
             const clipboardItems = await navigator.clipboard.read();
             let blob = null;
 
-            // 画像を探す (Office対応のため image/png 優先)
             for (const item of clipboardItems) {
                 const imageTypes = item.types.filter(type => type.startsWith('image/'));
                 if (imageTypes.length > 0) {
@@ -156,48 +188,41 @@
                 throw new Error("クリップボードに画像が見つかりません。");
             }
 
-            // -------------------------------------------------
-            // 2. 画像オブジェクト化 (Load)
-            // -------------------------------------------------
+            // 2. 画像オブジェクト化
             const img = new Image();
-            // URL.createObjectURLを使うと高速に読み込めます
             img.src = URL.createObjectURL(blob);
-            
-            // 画像の読み込み完了を待つ（Promise化）
             await new Promise((resolve, reject) => {
                 img.onload = resolve;
                 img.onerror = () => reject(new Error("画像の読み込みに失敗しました"));
             });
 
-            // -------------------------------------------------
-            // 3. キャンバスで圧縮 (Compress)
-            // -------------------------------------------------
+            // 3. キャンバスで圧縮 (選択された倍率を使用)
             const ctx = canvas.getContext('2d');
-            const newWidth = Math.floor(img.naturalWidth / 2);
-            const newHeight = Math.floor(img.naturalHeight / 2);
+            
+            // プルダウンの値(2, 4, 6)を取得して計算
+            const divider = parseInt(ratioSelect.value, 10);
+            const newWidth = Math.floor(img.naturalWidth / divider);
+            const newHeight = Math.floor(img.naturalHeight / divider);
 
             canvas.width = newWidth;
             canvas.height = newHeight;
             ctx.drawImage(img, 0, 0, newWidth, newHeight);
 
-            // -------------------------------------------------
-            // 4. キャンバスからBlob変換 & クリップボードへ書き込み (Write)
-            // -------------------------------------------------
-            // toBlobも非同期なのでPromiseで包みます
+            // 4. クリップボードへ書き込み
             const compressedBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-            
             const item = new ClipboardItem({ 'image/png': compressedBlob });
             await navigator.clipboard.write([item]);
 
-            // -------------------------------------------------
-            // 5. 完了表示 (UI Update)
-            // -------------------------------------------------
-            msg.textContent = "完了！ 圧縮画像をコピーしました (Ctrl+Vで貼り付け可能)";
+            // 5. 完了表示
+            msg.textContent = "完了！ 圧縮画像をコピーしました";
             msg.className = "status success";
 
-            // プレビュー表示
+            // 情報表示
             orgSizeSpan.textContent = `${img.naturalWidth} x ${img.naturalHeight}`;
-            newSizeSpan.textContent = `${newWidth} x ${newHeight}`;
+            
+            // 選択肢のテキスト（"1/4 サイズ"など）を取得して表示に使用
+            const selectedText = ratioSelect.options[ratioSelect.selectedIndex].text.split(' ')[0]; // "1/4"などを抽出
+            resultInfoSpan.textContent = `${newWidth} x ${newHeight} (${selectedText})`;
             
             originalImage.src = img.src;
             resultImage.src = URL.createObjectURL(compressedBlob);
