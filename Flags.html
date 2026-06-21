@@ -424,7 +424,7 @@
 
             const totalDone = countriesData.filter(c => userProgress[c.id] === 'memorized').length;
             document.getElementById('progress').style.width = `${totalDone}%`;
-            document.getElementById('counter').innerText = `${totalDone} / 100 記憶済み (残り: ${currentQueue.length - currentIdx})`;
+            document.getElementById('counter').innerText = `${totalDone} 記憶済み (残り: ${currentQueue.length - currentIdx})`;
         }
 
         // タップで正解とボタンを表示
