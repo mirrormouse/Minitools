@@ -51,7 +51,7 @@
         #quiz-page { justify-content: center; align-items: center; padding: 20px; position: relative; }
         .progress-bar { position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: #e2e8f0; }
         .progress-fill { height: 100%; background: var(--accent-color); width: 0%; transition: width 0.3s; }
-        .counter { position: absolute; top: 10px; font-size: 14px; color: #64748b; }
+        .counter { position: absolute; top: 15px; font-size: 14px; color: #64748b; }
 
         /* カードのスタイル */
         .card-container {
@@ -60,6 +60,7 @@
             height: 420px;
             perspective: 1000px;
             position: relative;
+            margin-top: 20px;
         }
         .card {
             width: 100%;
@@ -77,6 +78,23 @@
             transition: transform 0.1s ease-out, opacity 0.1s ease-out;
             user-select: none;
         }
+        
+        /* スワイプ中のスタンプ */
+        .stamp {
+            position: absolute;
+            top: 20px;
+            padding: 8px 16px;
+            border: 3px solid;
+            border-radius: 8px;
+            font-size: 20px;
+            font-weight: bold;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .stamp-unknown { color: var(--error-color); border-color: var(--error-color); right: 20px; transform: rotate(15deg); }
+        .stamp-memorized { color: var(--success-color); border-color: var(--success-color); left: 20px; transform: rotate(-15deg); }
+
         .flag-img {
             width: 80%;
             max-height: 160px;
@@ -86,23 +104,37 @@
             margin-bottom: 30px;
             pointer-events: none;
         }
-        .hint-text { color: #94a3b8; font-size: 14px; margin-top: 20px; }
+        .hint-text { color: #94a3b8; font-size: 16px; margin-top: 20px; animation: pulse 2s infinite; }
         .answer-area { display: none; text-align: center; width: 100%; animation: fadeIn 0.2s ease-out; }
         .answer-area.show { display: block; }
         .country-name { font-size: 26px; font-weight: bold; margin-bottom: 8px; }
         .capital-name { font-size: 18px; color: #475569; }
         
-        /* 操作ガイド用補助テキスト */
-        .swipe-guide {
-            display: flex;
-            justify-content: space-between;
+        /* アクションエリア（ボタン） */
+        .action-area {
             width: 100%;
             max-width: 360px;
-            margin-top: 20px;
-            font-size: 12px;
-            color: #94a3b8;
-            padding: 0 10px;
+            margin-top: 30px;
+            height: 60px;
         }
+        .action-buttons {
+            display: none; /* 初期非表示 */
+            width: 100%;
+            gap: 15px;
+        }
+        .action-buttons.show { display: flex; animation: fadeIn 0.3s ease; }
+        .action-btn {
+            flex: 1;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .btn-unknown { background-color: #fee2e2; color: var(--error-color); }
+        .btn-memorized { background-color: #dcfce7; color: var(--success-color); }
 
         /* 一覧画面 */
         #list-page { overflow-y: auto; padding: 20px; }
@@ -116,37 +148,37 @@
         .item-list { display: flex; flex-direction: column; gap: 8px; }
         .country-item {
             display: flex; align-items: center; background: var(--card-bg);
-            padding: 10px 15px; border-radius: 8px; border-1px: solid #e2e8f0;
+            padding: 10px 15px; border-radius: 8px; border-bottom: 1px solid #e2e8f0;
         }
         .item-flag { width: 40px; height: 26px; object-fit: contain; border: 1px solid #e2e8f0; margin-right: 15px; }
         .item-info { flex: 1; }
         .item-name { font-weight: bold; font-size: 15px; }
         .item-capital { font-size: 12px; color: #64748b; }
-        .badge {
-            font-size: 12px; padding: 4px 8px; border-radius: 6px; font-weight: bold;
-        }
+        .badge { font-size: 12px; padding: 4px 8px; border-radius: 6px; font-weight: bold; }
         .badge-untested { background: #e2e8f0; color: #475569; }
         .badge-memorized { background: #dcfce7; color: var(--success-color); }
         .badge-unknown { background: #fee2e2; color: var(--error-color); }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
     </style>
 </head>
 <body>
 
-    <!-- ナビゲーションタブ -->
     <nav>
         <button class="nav-btn active" onclick="switchPage('quiz')">暗記カード</button>
         <button class="nav-btn" onclick="switchPage('list')">確認一覧</button>
     </nav>
 
-    <!-- クイズ画面 -->
     <div id="quiz-page" class="page active">
         <div class="progress-bar"><div id="progress" class="progress-fill"></div></div>
         <div id="counter" class="counter">0 / 0</div>
         
         <div class="card-container">
             <div id="card" class="card" onclick="showAnswer()">
+                <div id="stamp-unknown" class="stamp stamp-unknown">未記憶</div>
+                <div id="stamp-memorized" class="stamp stamp-memorized">記憶済み</div>
+                
                 <img id="flag" class="flag-img" src="" alt="国旗">
                 <div id="hint" class="hint-text">タップして正解を表示</div>
                 <div id="answer" class="answer-area">
@@ -155,13 +187,15 @@
                 </div>
             </div>
         </div>
-        <div class="swipe-guide">
-            <span>← スワイプ：未記憶</span>
-            <span>記憶済み：スワイプ →</span>
+        
+        <div class="action-area">
+            <div id="action-buttons" class="action-buttons">
+                <button class="action-btn btn-unknown" onclick="triggerAction(false)">← 未記憶</button>
+                <button class="action-btn btn-memorized" onclick="triggerAction(true)">記憶済み →</button>
+            </div>
         </div>
     </div>
 
-    <!-- 一覧画面 -->
     <div id="list-page" class="page">
         <div class="list-header">
             <h2>国旗・首都 一覧</h2>
@@ -172,121 +206,169 @@
     </div>
 
     <script>
-        // 常識度の高い100カ国データ（前回の100カ国をISOコード付きで定義）
         const countriesData = [
-            {id:"us", name:"アメリカ合衆国", capital:"ワシントンD.C."},
-            {id:"cn", name:"中華人民共和国", capital:"北京"},
-            {id:"kr", name:"大韓民国", capital:"ソウル"},
-            {id:"ru", name:"ロシア連邦", capital:"モスクワ"},
-            {id:"gb", name:"イギリス", capital:"ロンドン"},
-            {id:"fr", name:"フランス", capital:"パリ"},
-            {id:"de", name:"ドイツ", capital:"ベルリン"},
-            {id:"it", name:"イタリア", capital:"ローマ"},
-            {id:"ca", name:"カナダ", capital:"オタワ"},
-            {id:"au", name:"オーストラリア", capital:"キャンベラ"},
-            {id:"in", name:"インド", capital:"ニューデリー"},
-            {id:"br", name:"ブラジル", capital:"ブラジリア"},
-            {id:"ua", name:"ウクライナ", capital:"キーウ"},
-            {id:"kp", name:"朝鮮民主主義人民共和国", capital:"平壌"},
-            {id:"es", name:"スペイン", capital:"マドリード"},
-            {id:"nl", name:"オランダ", capital:"アムステルダム"},
-            {id:"ch", name:"スイス", capital:"ベルン"},
-            {id:"tr", name:"トルコ", capital:"アンカラ"},
-            {id:"id", name:"インドネシア", capital:"ジャカルタ"},
-            {id:"th", name:"タイ", capital:"バンコク"},
-            {id:"vn", name:"ベトナム", capital:"ハノイ"},
-            {id:"ph", name:"フィリピン", capital:"マニラ"},
-            {id:"sg", name:"シンガポール", capital:"シンガポール"},
-            {id:"my", name:"マレーシア", capital:"クアラルンプール"},
-            {id:"mx", name:"メキシコ", capital:"メキシコシティ"},
-            {id:"ar", name:"アルゼンチン", capital:"ブエノスアイレス"},
-            {id:"sa", name:"サウジアラビア", capital:"リヤド"},
-            {id:"ae", name:"アラブ首長国連邦", capital:"アブダビ"},
-            {id:"il", name:"イスラエル", capital:"エルサレム"},
-            {id:"eg", name:"エジプト", capital:"カイロ"},
-            {id:"ir", name:"イラン", capital:"テヘラン"},
-            {id:"iq", name:"イラク", capital:"バグダッド"},
-            {id:"sy", name:"シリア", capital:"ダマスカス"},
-            {id:"af", name:"アフガニスタン", capital:"カブール"},
-            {id:"pk", name:"パキスタン", capital:"イスラマバード"},
-            {id:"bd", name:"バングラデシュ", capital:"ダッカ"},
-            {id:"mm", name:"ミャンマー", capital:"ネピドー"},
-            {id:"nz", name:"ニュージーランド", capital:"ウェリントン"},
-            {id:"za", name:"南アフリカ共和国", capital:"プレトリア"},
-            {id:"se", name:"スウェーデン", capital:"ストックホルム"},
-            {id:"no", name:"ノルウェー", capital:"オスロ"},
-            {id:"dk", name:"デンマーク", capital:"コペンハーゲン"},
-            {id:"fi", name:"フィンランド", capital:"ヘルシンキ"},
-            {id:"at", name:"オーストリア", capital:"ウィーン"},
-            {id:"gr", name:"ギリシャ", capital:"アテネ"},
-            {id:"pl", name:"ポーランド", capital:"ワルシャワ"},
-            {id:"be", name:"ベルギー", capital:"ブリュッセル"},
-            {id:"pt", name:"ポルトガル", capital:"リスボン"},
-            {id:"ie", name:"アイルランド", capital:"ダブリン"},
-            {id:"va", name:"バチカン市国", capital:"バチカン"},
-            {id:"cz", name:"チェコ", capital:"プラハ"},
-            {id:"hu", name:"ハンガリー", capital:"ブダペスト"},
-            {id:"ro", name:"ルーマニア", capital:"ブカレスト"},
-            {id:"bg", name:"ブルガリア", capital:"ソフィア"},
-            {id:"hr", name:"クロアチア", capital:"ザグレブ"},
-            {id:"rs", name:"セルビア", capital:"ベオグラード"},
-            {id:"cu", name:"キューバ", capital:"ハバナ"},
-            {id:"co", name:"コロンビア", capital:"ボゴタ"},
-            {id:"cl", name:"チリ", capital:"サンティアゴ"},
-            {id:"pe", name:"ペルー", capital:"リマ"},
-            {id:"ve", name:"ベネズエラ", capital:"カラカス"},
-            {id:"ma", name:"モロッコ", capital:"ラバト"},
-            {id:"dz", name:"アルジェリア", capital:"アルジェ"},
-            {id:"ng", name:"ナイジェリア", capital:"アブジャ"},
-            {id:"ke", name:"ケニア", capital:"ナイロビ"},
-            {id:"et", name:"エチオピア", capital:"アディスアベバ"},
-            {id:"gh", name:"ガーナ", capital:"アクラ"},
-            {id:"lk", name:"スリランカ", capital:"スリジャヤワルダナプラコッテ"},
-            {id:"np", name:"ネパール", capital:"カトマンズ"},
-            {id:"kh", name:"カンボジア", capital:"プノンペン"},
-            {id:"mn", name:"モンゴル", capital:"ウランバートル"},
-            {id:"qa", name:"カタール", capital:"ドーハ"},
-            {id:"kw", name:"クウェート", capital:"クウェート"},
-            {id:"lb", name:"レバノン", capital:"ベイルート"},
-            {id:"jo", name:"ヨルダン", capital:"アンマン"},
-            {id:"sd", name:"スーダン", capital:"ハルツーム"},
-            {id:"tn", name:"チュニジア", capital:"チュニス"},
-            {id:"ly", name:"リビア", capital:"トリポリ"},
-            {id:"sn", name:"セネガル", capital:"ダカール"},
-            {id:"tz", name:"タンザニア", capital:"ドドマ"},
-            {id:"ug", name:"ウガンダ", capital:"カンパラ"},
-            {id:"mg", name:"マダガスカル", capital:"アンタナナリボ"},
-            {id:"zw", name:"ジンバブエ", capital:"ハラレ"},
-            {id:"jm", name:"ジャマイカ", capital:"キングストン"},
-            {id:"pa", name:"パナマ", capital:"パナマシティ"},
-            {id:"cr", name:"コスタリカ", capital:"サンホセ"},
-            {id:"ec", name:"エクアドル", capital:"キト"},
-            {id:"bo", name:"ボリビア", capital:"ラパス/スクレ"},
-            {id:"py", name:"パラグアイ", capital:"アスンシオン"},
-            {id:"uy", name:"ウルグアイ", capital:"モンテビデオ"},
-            {id:"fj", name:"フィジー", capital:"スバ"},
-            {id:"pg", name:"パプアニューギニア", capital:"ポートモレスビー"},
             {id:"is", name:"アイスランド", capital:"レイキャビク"},
+            {id:"ie", name:"アイルランド", capital:"ダブリン"},
+            {id:"al", name:"アルバニア", capital:"ティラナ"},
+            {id:"ad", name:"アンドラ", capital:"アンドララベリャ"},
+            {id:"gb", name:"イギリス", capital:"ロンドン"},
+            {id:"it", name:"イタリア", capital:"ローマ"},
+            {id:"ua", name:"ウクライナ", capital:"キーウ"},
+            {id:"ee", name:"エストニア", capital:"タリン"},
+            {id:"at", name:"オーストリア", capital:"ウィーン"},
+            {id:"nl", name:"オランダ", capital:"アムステルダム"},
+            {id:"cy", name:"キプロス", capital:"ニコシア"},
+            {id:"gr", name:"ギリシャ", capital:"アテネ"},
+            {id:"hr", name:"クロアチア", capital:"ザグレブ"},
+            {id:"sm", name:"サンマリノ", capital:"サンマリノ"},
+            {id:"ch", name:"スイス", capital:"ベルン"},
+            {id:"se", name:"スウェーデン", capital:"ストックホルム"},
+            {id:"es", name:"スペイン", capital:"マドリード"},
             {id:"sk", name:"スロバキア", capital:"ブラチスラバ"},
+            {id:"si", name:"スロベニア", capital:"リュブリャナ"},
+            {id:"rs", name:"セルビア", capital:"ベオグラード"},
+            {id:"cz", name:"チェコ", capital:"プラハ"},
+            {id:"dk", name:"デンマーク", capital:"コペンハーゲン"},
+            {id:"de", name:"ドイツ", capital:"ベルリン"},
+            {id:"tr", name:"トルコ", capital:"アンカラ"},
+            {id:"no", name:"ノルウェー", capital:"オスロ"},
+            {id:"va", name:"バチカン市国", capital:"バチカン"},
+            {id:"hu", name:"ハンガリー", capital:"ブダペスト"},
+            {id:"fi", name:"フィンランド", capital:"ヘルシンキ"},
+            {id:"fr", name:"フランス", capital:"パリ"},
+            {id:"bg", name:"ブルガリア", capital:"ソフィア"},
+            {id:"by", name:"ベラルーシ", capital:"ミンスク"},
+            {id:"be", name:"ベルギー", capital:"ブリュッセル"},
+            {id:"pl", name:"ポーランド", capital:"ワルシャワ"},
+            {id:"ba", name:"ボスニア・ヘルツェゴビナ", capital:"サラエボ"},
+            {id:"pt", name:"ポルトガル", capital:"リスボン"},
+            {id:"mk", name:"北マケドニア", capital:"スコピエ"},
+            {id:"mt", name:"マルタ", capital:"バレッタ"},
             {id:"mc", name:"モナコ", capital:"モナコ"},
-            {id:"la", name:"ラオス", capital:"ビエンチャン"},
-            {id:"bn", name:"ブルネイ", capital:"バンダルスリブガワン"},
-            {id:"kz", name:"カザフスタン", capital:"アスタナ"},
-            {id:"uz", name:"ウズベキスタン", capital:"タシケント"},
-            {id:"lu", name:"ルクセンブルク", capital:"ルクセンブルク"}
+            {id:"md", name:"モルドバ", capital:"キシナウ"},
+            {id:"me", name:"モンテネグロ", capital:"ポドゴリツァ"},
+            {id:"lv", name:"ラトビア", capital:"リガ"},
+            {id:"lt", name:"リトアニア", capital:"ビリニュス"},
+            {id:"li", name:"リヒテンシュタイン", capital:"ファドゥーツ"},
+            {id:"ro", name:"ルーマニア", capital:"ブカレスト"},
+            {id:"lu", name:"ルクセンブルク", capital:"ルクセンブルク"},
+            {id:"ru", name:"ロシア連邦", capital:"モスクワ"}
         ];
+        // // 常識度の高い100カ国データ
+        // const countriesData = [
+        //     {id:"us", name:"アメリカ合衆国", capital:"ワシントンD.C."},
+        //     {id:"cn", name:"中華人民共和国", capital:"北京"},
+        //     {id:"kr", name:"大韓民国", capital:"ソウル"},
+        //     {id:"ru", name:"ロシア連邦", capital:"モスクワ"},
+        //     {id:"gb", name:"イギリス", capital:"ロンドン"},
+        //     {id:"fr", name:"フランス", capital:"パリ"},
+        //     {id:"de", name:"ドイツ", capital:"ベルリン"},
+        //     {id:"it", name:"イタリア", capital:"ローマ"},
+        //     {id:"ca", name:"カナダ", capital:"オタワ"},
+        //     {id:"au", name:"オーストラリア", capital:"キャンベラ"},
+        //     {id:"in", name:"インド", capital:"ニューデリー"},
+        //     {id:"br", name:"ブラジル", capital:"ブラジリア"},
+        //     {id:"ua", name:"ウクライナ", capital:"キーウ"},
+        //     {id:"kp", name:"朝鮮民主主義人民共和国", capital:"平壌"},
+        //     {id:"es", name:"スペイン", capital:"マドリード"},
+        //     {id:"nl", name:"オランダ", capital:"アムステルダム"},
+        //     {id:"ch", name:"スイス", capital:"ベルン"},
+        //     {id:"tr", name:"トルコ", capital:"アンカラ"},
+        //     {id:"id", name:"インドネシア", capital:"ジャカルタ"},
+        //     {id:"th", name:"タイ", capital:"バンコク"},
+        //     {id:"vn", name:"ベトナム", capital:"ハノイ"},
+        //     {id:"ph", name:"フィリピン", capital:"マニラ"},
+        //     {id:"sg", name:"シンガポール", capital:"シンガポール"},
+        //     {id:"my", name:"マレーシア", capital:"クアラルンプール"},
+        //     {id:"mx", name:"メキシコ", capital:"メキシコシティ"},
+        //     {id:"ar", name:"アルゼンチン", capital:"ブエノスアイレス"},
+        //     {id:"sa", name:"サウジアラビア", capital:"リヤド"},
+        //     {id:"ae", name:"アラブ首長国連邦", capital:"アブダビ"},
+        //     {id:"il", name:"イスラエル", capital:"エルサレム"},
+        //     {id:"eg", name:"エジプト", capital:"カイロ"},
+        //     {id:"ir", name:"イラン", capital:"テヘラン"},
+        //     {id:"iq", name:"イラク", capital:"バグダッド"},
+        //     {id:"sy", name:"シリア", capital:"ダマスカス"},
+        //     {id:"af", name:"アフガニスタン", capital:"カブール"},
+        //     {id:"pk", name:"パキスタン", capital:"イスラマバード"},
+        //     {id:"bd", name:"バングラデシュ", capital:"ダッカ"},
+        //     {id:"mm", name:"ミャンマー", capital:"ネピドー"},
+        //     {id:"nz", name:"ニュージーランド", capital:"ウェリントン"},
+        //     {id:"za", name:"南アフリカ共和国", capital:"プレトリア"},
+        //     {id:"se", name:"スウェーデン", capital:"ストックホルム"},
+        //     {id:"no", name:"ノルウェー", capital:"オスロ"},
+        //     {id:"dk", name:"デンマーク", capital:"コペンハーゲン"},
+        //     {id:"fi", name:"フィンランド", capital:"ヘルシンキ"},
+        //     {id:"at", name:"オーストリア", capital:"ウィーン"},
+        //     {id:"gr", name:"ギリシャ", capital:"アテネ"},
+        //     {id:"pl", name:"ポーランド", capital:"ワルシャワ"},
+        //     {id:"be", name:"ベルギー", capital:"ブリュッセル"},
+        //     {id:"pt", name:"ポルトガル", capital:"リスボン"},
+        //     {id:"ie", name:"アイルランド", capital:"ダブリン"},
+        //     {id:"va", name:"バチカン市国", capital:"バチカン"},
+        //     {id:"cz", name:"チェコ", capital:"プラハ"},
+        //     {id:"hu", name:"ハンガリー", capital:"ブダペスト"},
+        //     {id:"ro", name:"ルーマニア", capital:"ブカレスト"},
+        //     {id:"bg", name:"ブルガリア", capital:"ソフィア"},
+        //     {id:"hr", name:"クロアチア", capital:"ザグレブ"},
+        //     {id:"rs", name:"セルビア", capital:"ベオグラード"},
+        //     {id:"cu", name:"キューバ", capital:"ハバナ"},
+        //     {id:"co", name:"コロンビア", capital:"ボゴタ"},
+        //     {id:"cl", name:"チリ", capital:"サンティアゴ"},
+        //     {id:"pe", name:"ペルー", capital:"リマ"},
+        //     {id:"ve", name:"ベネズエラ", capital:"カラカス"},
+        //     {id:"ma", name:"モロッコ", capital:"ラバト"},
+        //     {id:"dz", name:"アルジェリア", capital:"アルジェ"},
+        //     {id:"ng", name:"ナイジェリア", capital:"アブジャ"},
+        //     {id:"ke", name:"ケニア", capital:"ナイロビ"},
+        //     {id:"et", name:"エチオピア", capital:"アディスアベバ"},
+        //     {id:"gh", name:"ガーナ", capital:"アクラ"},
+        //     {id:"lk", name:"スリランカ", capital:"スリジャヤワルダナプラコッテ"},
+        //     {id:"np", name:"ネパール", capital:"カトマンズ"},
+        //     {id:"kh", name:"カンボジア", capital:"プノンペン"},
+        //     {id:"mn", name:"モンゴル", capital:"ウランバートル"},
+        //     {id:"qa", name:"カタール", capital:"ドーハ"},
+        //     {id:"kw", name:"クウェート", capital:"クウェート"},
+        //     {id:"lb", name:"レバノン", capital:"ベイルート"},
+        //     {id:"jo", name:"ヨルダン", capital:"アンマン"},
+        //     {id:"sd", name:"スーダン", capital:"ハルツーム"},
+        //     {id:"tn", name:"チュニジア", capital:"チュニス"},
+        //     {id:"ly", name:"リビア", capital:"トリポリ"},
+        //     {id:"sn", name:"セネガル", capital:"ダカール"},
+        //     {id:"tz", name:"タンザニア", capital:"ドドマ"},
+        //     {id:"ug", name:"ウガンダ", capital:"カンパラ"},
+        //     {id:"mg", name:"マダガスカル", capital:"アンタナナリボ"},
+        //     {id:"zw", name:"ジンバブエ", capital:"ハラレ"},
+        //     {id:"jm", name:"ジャマイカ", capital:"キングストン"},
+        //     {id:"pa", name:"パナマ", capital:"パナマシティ"},
+        //     {id:"cr", name:"コスタリカ", capital:"サンホセ"},
+        //     {id:"ec", name:"エクアドル", capital:"キト"},
+        //     {id:"bo", name:"ボリビア", capital:"ラパス/スクレ"},
+        //     {id:"py", name:"パラグアイ", capital:"アスンシオン"},
+        //     {id:"uy", name:"ウルグアイ", capital:"モンテビデオ"},
+        //     {id:"fj", name:"フィジー", capital:"スバ"},
+        //     {id:"pg", name:"パプアニューギニア", capital:"ポートモレスビー"},
+        //     {id:"is", name:"アイスランド", capital:"レイキャビク"},
+        //     {id:"sk", name:"スロバキア", capital:"ブラチスラバ"},
+        //     {id:"mc", name:"モナコ", capital:"モナコ"},
+        //     {id:"la", name:"ラオス", capital:"ビエンチャン"},
+        //     {id:"bn", name:"ブルネイ", capital:"バンダルスリブガワン"},
+        //     {id:"kz", name:"カザフスタン", capital:"アスタナ"},
+        //     {id:"uz", name:"ウズベキスタン", capital:"タシケント"},
+        //     {id:"lu", name:"ルクセンブルク", capital:"ルクセンブルク"}
+        // ];
 
-        let userProgress = {}; // 各国の状態（memorized, unknown, untested）
-        let currentQueue = []; // 出題対象の配列
+        let userProgress = {};
+        let currentQueue = [];
         let currentIdx = 0;
         let isAnswerShown = false;
 
-        // スワイプ操作用変数
         let startX = 0;
         let currentX = 0;
         const card = document.getElementById('card');
+        const stampMemorized = document.getElementById('stamp-memorized');
+        const stampUnknown = document.getElementById('stamp-unknown');
 
-        // 初期化
         function initApp() {
             const saved = localStorage.getItem('flag_quiz_progress');
             if (saved) {
@@ -304,17 +386,12 @@
             localStorage.setItem('flag_quiz_progress', JSON.stringify(userProgress));
         }
 
-        // 出題キュー作成（「未記憶」を最優先、次に「未出題」）
         function buildQueue() {
             const unknowns = countriesData.filter(c => userProgress[c.id] === 'unknown');
             const untesteds = countriesData.filter(c => userProgress[c.id] === 'untested');
-            
-            // ランダムにシャッフルして結合
             currentQueue = [...shuffle(unknowns), ...shuffle(untesteds)];
             currentIdx = 0;
-
             if (currentQueue.length === 0) {
-                // すべて記憶済みの場合はリマインドとして全体から再出題できるようにする
                 currentQueue = shuffle([...countriesData]);
             }
         }
@@ -323,55 +400,67 @@
             return array.sort(() => Math.random() - 0.5);
         }
 
-        // カード表示
         function showNextCard() {
-            if (currentIdx >= currentQueue.length) {
-                buildQueue(); // キューが切れたら再構築
-            }
+            if (currentIdx >= currentQueue.length) buildQueue();
 
             const current = currentQueue[currentIdx];
-            if (!current) {
-                document.getElementById('quiz-page').innerHTML = "<p style='font-weight:bold;'>全100カ国をマスターしました！一覧からリセットできます。</p>";
-                return;
-            }
+            if (!current) return;
 
-            // 初期状態に戻す
+            // 初期化
+            card.style.transition = 'none';
             card.style.transform = 'translateX(0px) rotate(0deg)';
             card.style.opacity = '1';
+            stampMemorized.style.opacity = '0';
+            stampUnknown.style.opacity = '0';
+            
             isAnswerShown = false;
             document.getElementById('hint').style.display = 'block';
             document.getElementById('answer').classList.remove('show');
+            document.getElementById('action-buttons').classList.remove('show');
 
-            // Flagcdnから画像URLを生成（w320サイズ指定）
             document.getElementById('flag').src = `https://flagcdn.com/w320/${current.id}.png`;
             document.getElementById('country').innerText = current.name;
             document.getElementById('capital').innerText = `首都: ${current.capital}`;
 
-            // 進捗表示の更新
             const totalDone = countriesData.filter(c => userProgress[c.id] === 'memorized').length;
             document.getElementById('progress').style.width = `${totalDone}%`;
-            document.getElementById('counter').innerText = `${totalDone} / 100 記憶済み (残り出題数: ${currentQueue.length - currentIdx})`;
+            document.getElementById('counter').innerText = `${totalDone} / 100 記憶済み (残り: ${currentQueue.length - currentIdx})`;
         }
 
-        // タップで正解表示
+        // タップで正解とボタンを表示
         function showAnswer() {
             if (isAnswerShown) return;
             isAnswerShown = true;
             document.getElementById('hint').style.display = 'none';
             document.getElementById('answer').classList.add('show');
+            document.getElementById('action-buttons').classList.add('show');
         }
 
-        // スワイプ処理（右＝記憶、左＝未記憶）
+        // 状態保存して次へ
         function handleAction(isMemorized) {
             const current = currentQueue[currentIdx];
             userProgress[current.id] = isMemorized ? 'memorized' : 'unknown';
             saveProgress();
-
             currentIdx++;
             showNextCard();
         }
 
-        // タッチイベント設定（スワイプアニメーションと判定）
+        // ボタンからの強制スワイプ操作
+        function triggerAction(isMemorized) {
+            if (!isAnswerShown) return;
+            card.style.transition = 'transform 0.3s ease-out, opacity 0.3s ease-out';
+            if (isMemorized) {
+                stampMemorized.style.opacity = '1';
+                card.style.transform = 'translateX(500px) rotate(30deg)';
+            } else {
+                stampUnknown.style.opacity = '1';
+                card.style.transform = 'translateX(-500px) rotate(-30deg)';
+            }
+            card.style.opacity = '0';
+            setTimeout(() => handleAction(isMemorized), 300);
+        }
+
+        // スワイプイベント
         function setupTouchEvents() {
             card.addEventListener('touchstart', (e) => {
                 startX = e.touches[0].clientX;
@@ -379,28 +468,39 @@
             });
 
             card.addEventListener('touchmove', (e) => {
+                if (!isAnswerShown) return;
                 currentX = e.touches[0].clientX;
                 const diffX = currentX - startX;
-                // 正解表示中のみスワイプを許可
-                if (isAnswerShown) {
-                    card.style.transform = `translateX(${diffX}px) rotate(${diffX / 15}deg)`;
+                card.style.transform = `translateX(${diffX}px) rotate(${diffX / 15}deg)`;
+
+                // スワイプ距離に応じてスタンプの不透明度を変更
+                const opacity = Math.min(Math.abs(diffX) / 100, 1);
+                if (diffX > 0) {
+                    stampMemorized.style.opacity = opacity;
+                    stampUnknown.style.opacity = 0;
+                } else {
+                    stampUnknown.style.opacity = opacity;
+                    stampMemorized.style.opacity = 0;
                 }
             });
 
             card.addEventListener('touchend', (e) => {
+                if (!isAnswerShown) return;
                 card.style.transition = 'transform 0.2s ease-out, opacity 0.2s ease-out';
                 const diffX = currentX - startX;
 
-                if (!isAnswerShown || Math.abs(diffX) < 100) {
-                    // スワイプ距離が足りないか、未回答なら位置を戻す
+                if (Math.abs(diffX) < 100) {
+                    // キャンセル処理
                     card.style.transform = 'translateX(0px) rotate(0deg)';
+                    stampMemorized.style.opacity = '0';
+                    stampUnknown.style.opacity = '0';
                 } else if (diffX > 100) {
-                    // 右スワイプ（記憶済み）
+                    // 右スワイプ確定
                     card.style.transform = 'translateX(500px) rotate(30deg)';
                     card.style.opacity = '0';
                     setTimeout(() => handleAction(true), 200);
                 } else if (diffX < -100) {
-                    // 左スワイプ（未記憶）
+                    // 左スワイプ確定
                     card.style.transform = 'translateX(-500px) rotate(-30deg)';
                     card.style.opacity = '0';
                     setTimeout(() => handleAction(false), 200);
@@ -410,11 +510,10 @@
             });
         }
 
-        // ページ切り替え（URL変更なし・同一SPA内）
+        // ページ切り替えと一覧の描画は前回と同一
         function switchPage(pageName) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-
             if (pageName === 'quiz') {
                 document.getElementById('quiz-page').classList.add('active');
                 document.querySelectorAll('.nav-btn')[0].classList.add('active');
@@ -426,11 +525,9 @@
             }
         }
 
-        // 一覧画面の描画
         function renderList() {
             const listContainer = document.getElementById('item-list');
             listContainer.innerHTML = '';
-
             let mCount = 0, uCount = 0, tCount = 0;
 
             countriesData.forEach(c => {
@@ -441,11 +538,9 @@
 
                 const item = document.createElement('div');
                 item.className = 'country-item';
-
-                let badgeHtml = '';
-                if (status === 'memorized') badgeHtml = '<span class="badge badge-memorized">記憶済み</span>';
-                else if (status === 'unknown') badgeHtml = '<span class="badge badge-unknown">未記憶</span>';
-                else badgeHtml = '<span class="badge badge-untested">未出題</span>';
+                let badgeHtml = status === 'memorized' ? '<span class="badge badge-memorized">記憶済み</span>' : 
+                                status === 'unknown' ? '<span class="badge badge-unknown">未記憶</span>' : 
+                                '<span class="badge badge-untested">未出題</span>';
 
                 item.innerHTML = `
                     <img class="item-flag" src="https://flagcdn.com/w80/${c.id}.png" alt="">
@@ -457,11 +552,9 @@
                 `;
                 listContainer.appendChild(item);
             });
-
             document.getElementById('stats').innerText = `記憶済み: ${mCount} / 未記憶: ${uCount} / 未出題: ${tCount}`;
         }
 
-        // ストレージリセット
         function resetStorage() {
             if (confirm('これまでの学習記録をすべて削除して初期化しますか？')) {
                 countriesData.forEach(c => userProgress[c.id] = 'untested');
@@ -472,7 +565,6 @@
             }
         }
 
-        // アプリ起動
         window.onload = initApp;
     </script>
 </body>
