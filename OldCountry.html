@@ -1,494 +1,110 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>旧国名暗記カード</title>
-    <style>
-        :root {
-            --bg-color: #f8fafc;
-            --card-bg: #ffffff;
-            --text-color: #1e293b;
-            --accent-color: #3b82f6;
-            --success-color: #22c55e;
-            --error-color: #ef4444;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
-        }
-        /* ナビゲーション */
-        nav {
-            display: flex;
-            background: var(--card-bg);
-            border-bottom: 1px solid #e2e8f0;
-            height: 50px;
-        }
-        .nav-btn {
-            flex: 1;
-            border: none;
-            background: none;
-            font-size: 16px;
-            font-weight: bold;
-            color: #64748b;
-            cursor: pointer;
-        }
-        .nav-btn.active {
-            color: var(--accent-color);
-            border-bottom: 3px solid var(--accent-color);
-        }
-        /* メインコンテンツエリア */
-        .page { display: none; flex: 1; height: calc(100vh - 50px); overflow: hidden; }
-        .page.active { display: flex; flex-direction: column; }
-
-        /* クイズ画面 */
-        #quiz-page { justify-content: center; align-items: center; padding: 20px; position: relative; }
-        .progress-bar { position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: #e2e8f0; }
-        .progress-fill { height: 100%; background: var(--accent-color); width: 0%; transition: width 0.3s; }
-        .counter { position: absolute; top: 15px; font-size: 14px; color: #64748b; }
-
-        /* カードのスタイル */
-        .card-container {
-            width: 100%;
-            max-width: 360px;
-            height: 420px;
-            perspective: 1000px;
-            position: relative;
-            margin-top: 20px;
-        }
-        .card {
-            width: 100%;
-            height: 100%;
-            background: var(--card-bg);
-            border-radius: 16px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 24px;
-            cursor: pointer;
-            position: absolute;
-            transition: transform 0.1s ease-out, opacity 0.1s ease-out;
-            user-select: none;
-            text-align: center;
-        }
-        
-        /* スワイプ中のスタンプ */
-        .stamp {
-            position: absolute;
-            top: 20px;
-            padding: 8px 16px;
-            border: 3px solid;
-            border-radius: 8px;
-            font-size: 20px;
-            font-weight: bold;
-            opacity: 0;
-            pointer-events: none;
-            z-index: 10;
-        }
-        .stamp-unknown { color: var(--error-color); border-color: var(--error-color); right: 20px; transform: rotate(15deg); }
-        .stamp-memorized { color: var(--success-color); border-color: var(--success-color); left: 20px; transform: rotate(-15deg); }
-
-        /* カード内テキスト */
-        .question-area { margin-bottom: 20px; }
-        .province-name { font-size: 56px; font-weight: bold; letter-spacing: 4px; color: var(--text-color); }
-        .province-label { font-size: 14px; color: #94a3b8; margin-bottom: 8px; }
-        
-        .hint-text { color: #94a3b8; font-size: 16px; margin-top: 10px; animation: pulse 2s infinite; }
-        .answer-area { display: none; text-align: center; width: 100%; animation: fadeIn 0.2s ease-out; margin-top: 20px; border-top: 1px dashed #cbd5e1; padding-top: 20px; }
-        .answer-area.show { display: block; }
-        .pref-label { font-size: 14px; color: #64748b; margin-bottom: 4px; }
-        /* 長いテキストに対応するためサイズと行間を調整 */
-        .pref-name { font-size: 20px; font-weight: bold; color: var(--accent-color); line-height: 1.5; word-break: keep-all; }
-        
-        /* アクションエリア（ボタン） */
-        .action-area {
-            width: 100%;
-            max-width: 360px;
-            margin-top: 30px;
-            height: 60px;
-        }
-        .action-buttons {
-            display: none; /* 初期非表示 */
-            width: 100%;
-            gap: 15px;
-        }
-        .action-buttons.show { display: flex; animation: fadeIn 0.3s ease; }
-        .action-btn {
-            flex: 1;
-            padding: 15px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: bold;
-            border: none;
-            cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-        .btn-unknown { background-color: #fee2e2; color: var(--error-color); }
-        .btn-memorized { background-color: #dcfce7; color: var(--success-color); }
-
-        /* 一覧画面 */
-        #list-page { overflow-y: auto; padding: 20px; }
-        .list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .reset-btn {
-            background-color: var(--error-color);
-            color: white; border: none; padding: 8px 16px; border-radius: 8px;
-            font-weight: bold; cursor: pointer; font-size: 14px;
-        }
-        .stats { font-size: 14px; color: #475569; margin-bottom: 15px; }
-        .item-list { display: flex; flex-direction: column; gap: 8px; }
-        .province-item {
-            display: flex; align-items: center; background: var(--card-bg);
-            padding: 12px 15px; border-radius: 8px; border-bottom: 1px solid #e2e8f0;
-        }
-        .item-info { flex: 1; }
-        .item-name { font-weight: bold; font-size: 18px; margin-bottom: 4px; }
-        .item-pref { font-size: 13px; color: #64748b; line-height: 1.4; }
-        .badge { font-size: 12px; padding: 4px 8px; border-radius: 6px; font-weight: bold; white-space: nowrap; margin-left: 10px; }
-        .badge-untested { background: #e2e8f0; color: #475569; }
-        .badge-memorized { background: #dcfce7; color: var(--success-color); }
-        .badge-unknown { background: #fee2e2; color: var(--error-color); }
-
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f5f7fb">
+<title>旧国68 学習帳</title>
+<style>
+:root{--bg:#f5f7fb;--panel:#fff;--ink:#172033;--muted:#6b7485;--line:#e4e8ef;--brand:#3157d5;--brand2:#e9eeff;--ok:#15803d;--okbg:#e9f8ee;--bad:#c24141;--badbg:#fff0f0;--warn:#a16207;--shadow:0 12px 35px rgba(30,45,80,.09)}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}button,input,select{font:inherit}button{cursor:pointer}.app{max-width:960px;margin:auto;min-height:100dvh;padding-bottom:78px}.topbar{height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;position:sticky;top:0;background:rgba(245,247,251,.94);backdrop-filter:blur(12px);z-index:20;border-bottom:1px solid rgba(228,232,239,.85)}.brand{font-weight:800;letter-spacing:.02em}.brand small{font-weight:600;color:var(--muted);margin-left:7px}.iconbtn{border:0;background:transparent;color:var(--muted);padding:8px}.page{display:none;padding:18px}.page.active{display:block}.hero{background:linear-gradient(135deg,#233b97,#496ee4);color:white;border-radius:22px;padding:24px;box-shadow:var(--shadow);margin-bottom:16px}.hero h1{font-size:27px;margin:0 0 6px}.hero p{opacity:.82;margin:0 0 20px;font-size:14px}.heroRow{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:9px}.metric{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:12px}.metric strong{font-size:22px;display:block}.metric span{font-size:11px;opacity:.78}.primary{width:100%;border:0;border-radius:15px;padding:15px 18px;background:var(--brand);color:#fff;font-weight:800;box-shadow:0 7px 18px rgba(49,87,213,.2)}.primary:active{transform:translateY(1px)}.sectionTitle{font-size:13px;color:var(--muted);font-weight:800;margin:23px 4px 10px;text-transform:uppercase;letter-spacing:.08em}.modeGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.mode{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;text-align:left;min-height:90px;box-shadow:0 4px 14px rgba(28,40,70,.03)}.mode b{display:block;margin:4px 0;font-size:15px}.mode small{color:var(--muted);line-height:1.35}.modeIcon{font-size:20px}.notice{background:#fff8df;border:1px solid #f2e5ad;border-radius:14px;padding:12px 14px;color:#795f12;font-size:12px;line-height:1.5}.panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:0 6px 22px rgba(30,45,80,.045)}.studyHead{display:flex;align-items:center;gap:12px;margin-bottom:12px}.studyHead .grow{flex:1}.back{border:0;background:transparent;font-size:22px;padding:5px}.progress{height:7px;background:#e9edf4;border-radius:99px;overflow:hidden}.progress>div{height:100%;background:var(--brand);transition:width .25s}.studyMeta{display:flex;justify-content:space-between;margin-top:7px;color:var(--muted);font-size:12px}.card{min-height:420px;padding:22px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;position:relative}.eyebrow{font-size:12px;font-weight:800;color:var(--brand);background:var(--brand2);padding:5px 9px;border-radius:99px;margin-bottom:18px}.prompt{font-size:44px;font-weight:850;letter-spacing:.06em;line-height:1.25}.prompt.reading{font-size:35px}.subprompt{color:var(--muted);margin-top:10px;font-size:14px}.choices{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;margin-top:28px}.choice{border:1px solid var(--line);background:white;border-radius:14px;padding:14px 10px;font-weight:750;color:var(--ink)}.choice:hover{border-color:#b9c6ef}.choice.correct{background:var(--okbg);border-color:#a8d8b6;color:var(--ok)}.choice.wrong{background:var(--badbg);border-color:#edb6b6;color:var(--bad)}.answerBox{display:none;width:100%;margin-top:25px;border-top:1px solid var(--line);padding-top:18px}.answerBox.show{display:block}.answerMain{font-size:30px;font-weight:850}.answerReading{font-size:19px;margin-top:4px}.answerDetails{margin:13px auto 0;max-width:520px;color:var(--muted);font-size:13px;line-height:1.65}.reveal{margin-top:28px;border:1px solid var(--line);background:#fff;border-radius:14px;padding:13px 24px;font-weight:800}.rating{display:none;grid-template-columns:repeat(4,1fr);gap:7px;width:100%;margin-top:19px}.rating.show{display:grid}.rate{border:0;border-radius:11px;padding:10px 5px;font-size:12px;font-weight:800}.r0{background:var(--badbg);color:var(--bad)}.r1{background:#fff6e8;color:#a35d00}.r2{background:#edf5ff;color:#2457a6}.r3{background:var(--okbg);color:var(--ok)}.feedback{display:none;margin-top:15px;font-size:13px;font-weight:700}.feedback.show{display:block}.feedback.ok{color:var(--ok)}.feedback.bad{color:var(--bad)}.mapPanel{padding:12px;overflow:hidden}.mapTools{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:5px 6px 12px;flex-wrap:wrap}.seg{display:flex;background:#eef1f6;border-radius:10px;padding:3px}.seg button{border:0;background:transparent;border-radius:8px;padding:7px 10px;font-size:12px;color:var(--muted);font-weight:700}.seg button.active{background:white;color:var(--ink);box-shadow:0 1px 4px #ccd3e0}.mapWrap{overflow:auto;border:1px solid var(--line);border-radius:14px;background:#f8fafc}.countryMap{display:block;min-width:760px;width:100%;height:auto}.country{cursor:pointer}.country rect{fill:#fff;stroke:#aeb8c8;stroke-width:1.3;rx:6}.country text{font-size:11px;text-anchor:middle;dominant-baseline:middle;font-weight:700;fill:#40506a;pointer-events:none}.country:hover rect{fill:#edf2ff;stroke:#6f89dd}.country.selected rect{fill:#dce5ff;stroke:#3157d5;stroke-width:2.5}.country.target rect{fill:#ffd976;stroke:#c48d0b;stroke-width:2.5}.country.correct rect{fill:#c9efd4;stroke:#15803d;stroke-width:2.5}.country.wrong rect{fill:#ffd9d9;stroke:#c24141;stroke-width:2.5}.hideLabels text{opacity:0}.mapLegend{font-size:11px;color:var(--muted);padding:10px 4px 2px;line-height:1.5}.studyMap{width:100%;margin-top:18px}.studyMap .mapWrap{max-height:370px}.listTools{display:flex;gap:8px;margin-bottom:12px}.search{flex:1;border:1px solid var(--line);border-radius:12px;background:white;padding:11px 13px}.select{border:1px solid var(--line);border-radius:12px;background:white;padding:10px}.countryList{display:grid;grid-template-columns:1fr 1fr;gap:9px}.countryItem{padding:13px 14px}.countryItem h3{font-size:17px;margin:0 0 3px}.countryItem .reading{color:var(--brand);font-weight:700;font-size:13px}.countryItem p{color:var(--muted);font-size:12px;margin:8px 0 0;line-height:1.45}.countryItem footer{display:flex;justify-content:space-between;align-items:center;margin-top:9px}.tag{font-size:10px;border-radius:99px;background:#eef1f6;color:#586275;padding:4px 7px}.masteryDot{font-size:11px;color:var(--muted)}.statsGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.statCard{padding:16px}.statCard strong{font-size:24px;display:block}.statCard span{font-size:11px;color:var(--muted)}.skillRows{padding:7px 15px}.skillRow{padding:13px 0;border-bottom:1px solid var(--line)}.skillRow:last-child{border:0}.skillTop{display:flex;justify-content:space-between;font-size:13px;font-weight:700}.miniBar{height:6px;background:#edf0f5;border-radius:99px;margin-top:7px;overflow:hidden}.miniBar div{height:100%;background:var(--brand)}.weakList{padding:5px 15px 10px}.weak{display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--line);font-size:13px}.weak:last-child{border:0}.settings{padding:14px}.setting{display:flex;justify-content:space-between;gap:15px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line);font-size:13px}.danger{border:1px solid #efc1c1;color:var(--bad);background:white;border-radius:11px;padding:9px 12px;font-weight:700}.bottom{position:fixed;bottom:0;left:0;right:0;height:68px;padding-bottom:env(safe-area-inset-bottom);background:rgba(255,255,255,.96);border-top:1px solid var(--line);display:flex;z-index:30}.bottom button{flex:1;border:0;background:transparent;color:#7b8494;font-size:11px;font-weight:700}.bottom button span{display:block;font-size:20px;margin-bottom:2px}.bottom button.active{color:var(--brand)}.empty{text-align:center;color:var(--muted);padding:30px;font-size:13px}.modal{display:none;position:fixed;inset:0;background:rgba(20,27,44,.42);z-index:50;padding:20px;align-items:flex-end;justify-content:center}.modal.show{display:flex}.sheet{background:white;border-radius:22px 22px 14px 14px;padding:20px;width:100%;max-width:600px;max-height:82vh;overflow:auto}.sheet h2{margin:0 0 2px}.sheet .furigana{color:var(--brand);font-weight:700}.sheet dl{display:grid;grid-template-columns:90px 1fr;gap:9px 12px;margin:18px 0;font-size:13px}.sheet dt{color:var(--muted)}.sheet dd{margin:0;font-weight:650}.close{float:right;border:0;background:#eef1f6;border-radius:50%;width:34px;height:34px}.sheetMap{margin-top:12px}
+@media(max-width:650px){.page{padding:13px}.hero{padding:20px}.hero h1{font-size:24px}.heroRow{grid-template-columns:1.3fr 1fr 1fr}.modeGrid{grid-template-columns:1fr 1fr}.countryList{grid-template-columns:1fr}.prompt{font-size:38px}.card{min-height:390px;padding:18px}.statsGrid{grid-template-columns:1fr 1fr 1fr}.topbar{height:54px}.choices{gap:8px}.choice{padding:13px 8px}}
+</style>
 </head>
 <body>
-
-    <nav>
-        <button class="nav-btn active" onclick="switchPage('quiz')">暗記カード</button>
-        <button class="nav-btn" onclick="switchPage('list')">確認一覧</button>
-    </nav>
-
-    <div id="quiz-page" class="page active">
-        <div class="progress-bar"><div id="progress" class="progress-fill"></div></div>
-        <div id="counter" class="counter">0 / 0</div>
-        
-        <div class="card-container">
-            <div id="card" class="card" onclick="showAnswer()">
-                <div id="stamp-unknown" class="stamp stamp-unknown">未記憶</div>
-                <div id="stamp-memorized" class="stamp stamp-memorized">記憶済み</div>
-                
-                <div class="question-area">
-                    <div class="province-label">旧国名</div>
-                    <div id="province" class="province-name"></div>
-                </div>
-                <div id="hint" class="hint-text">タップして正解を表示</div>
-                <div id="answer" class="answer-area">
-                    <div class="pref-label">現在の都道府県</div>
-                    <div id="pref" class="pref-name"></div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="action-area">
-            <div id="action-buttons" class="action-buttons">
-                <button class="action-btn btn-unknown" onclick="triggerAction(false)">← 未記憶</button>
-                <button class="action-btn btn-memorized" onclick="triggerAction(true)">記憶済み →</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="list-page" class="page">
-        <div class="list-header">
-            <h2>旧国名・都道府県 一覧</h2>
-            <button class="reset-btn" onclick="resetStorage()">データを初期化</button>
-        </div>
-        <div id="stats" class="stats">記憶済み: 0 / 未記憶: 0 / 未出題: 0</div>
-        <div id="item-list" class="item-list"></div>
-    </div>
-
-    <script>
-        // 令制国68カ国 + 蝦夷・琉球のデータ（方向を追記）
-        const provincesData = [
-            // 畿内
-            {id: "yamashiro", name: "山城", pref: "京都府（南部）"},
-            {id: "yamato", name: "大和", pref: "奈良県"},
-            {id: "kawachi", name: "河内", pref: "大阪府（東部）"},
-            {id: "izumi", name: "和泉", pref: "大阪府（南西部）"},
-            {id: "settsu", name: "摂津", pref: "大阪府（北中部）、兵庫県（南東部）"},
-            // 東海道
-            {id: "iga", name: "伊賀", pref: "三重県（西部）"},
-            {id: "ise", name: "伊勢", pref: "三重県（北中部）"},
-            {id: "shima", name: "志摩", pref: "三重県（東部の半島部）"},
-            {id: "owari", name: "尾張", pref: "愛知県（西部）"},
-            {id: "mikawa", name: "三河", pref: "愛知県（東部）"},
-            {id: "totomi", name: "遠江", pref: "静岡県（西部）"},
-            {id: "suruga", name: "駿河", pref: "静岡県（中部）"},
-            {id: "izu", name: "伊豆", pref: "静岡県（東部の半島部）、東京都（島嶼部）"},
-            {id: "kai", name: "甲斐", pref: "山梨県"},
-            {id: "sagami", name: "相模", pref: "神奈川県（大部分）"},
-            {id: "musashi", name: "武蔵", pref: "東京都（本土）、埼玉県、神奈川県（東部）"},
-            {id: "awa_kanto", name: "安房", pref: "千葉県（南部）"},
-            {id: "kazusa", name: "上総", pref: "千葉県（中南部）"},
-            {id: "shimousa", name: "下総", pref: "千葉県（北部）、茨城県（南西部）"},
-            {id: "hitachi", name: "常陸", pref: "茨城県（大部分）"},
-            // 東山道
-            {id: "omi", name: "近江", pref: "滋賀県"},
-            {id: "mino", name: "美濃", pref: "岐阜県（南部）"},
-            {id: "hida", name: "飛騨", pref: "岐阜県（北部）"},
-            {id: "shinano", name: "信濃", pref: "長野県"},
-            {id: "kotsuke", name: "上野", pref: "群馬県"},
-            {id: "shimotsuke", name: "下野", pref: "栃木県"},
-            {id: "mutsu", name: "陸奥", pref: "青森県、岩手県、宮城県、福島県、秋田県（北東部）"},
-            {id: "dewa", name: "出羽", pref: "山形県、秋田県（大部分）"},
-            // 北陸道
-            {id: "wakasa", name: "若狭", pref: "福井県（南部）"},
-            {id: "echizen", name: "越前", pref: "福井県（北部）"},
-            {id: "kaga", name: "加賀", pref: "石川県（南部）"},
-            {id: "noto", name: "能登", pref: "石川県（北部）"},
-            {id: "etchu", name: "越中", pref: "富山県"},
-            {id: "echigo", name: "越後", pref: "新潟県（本土）"},
-            {id: "sado", name: "佐渡", pref: "新潟県（佐渡島）"},
-            // 山陰道
-            {id: "tamba", name: "丹波", pref: "京都府（中部）、兵庫県（中東部）"},
-            {id: "tango", name: "丹後", pref: "京都府（北部）"},
-            {id: "tajima", name: "但馬", pref: "兵庫県（北部）"},
-            {id: "inaba", name: "因幡", pref: "鳥取県（東部）"},
-            {id: "hoki", name: "伯耆", pref: "鳥取県（西部）"},
-            {id: "izumo", name: "出雲", pref: "島根県（東部）"},
-            {id: "iwami", name: "石見", pref: "島根県（西部）"},
-            {id: "oki", name: "隠岐", pref: "島根県（隠岐諸島）"},
-            // 山陽道
-            {id: "harima", name: "播磨", pref: "兵庫県（南西部）"},
-            {id: "mimasaka", name: "美作", pref: "岡山県（北部）"},
-            {id: "bizen", name: "備前", pref: "岡山県（南東部）、兵庫県（南西部の一部）"},
-            {id: "bitchu", name: "備中", pref: "岡山県（西部）"},
-            {id: "bingo", name: "備後", pref: "広島県（東部）"},
-            {id: "aki", name: "安芸", pref: "広島県（西部）"},
-            {id: "suo", name: "周防", pref: "山口県（東部）"},
-            {id: "nagato", name: "長門", pref: "山口県（西部）"},
-            // 南海道
-            {id: "kii", name: "紀伊", pref: "和歌山県、三重県（南部）"},
-            {id: "awaji", name: "淡路", pref: "兵庫県（淡路島）"},
-            {id: "awa_shikoku", name: "阿波", pref: "徳島県"},
-            {id: "sanuki", name: "讃岐", pref: "香川県"},
-            {id: "iyo", name: "伊予", pref: "愛媛県"},
-            {id: "tosa", name: "土佐", pref: "高知県"},
-            // 西海道
-            {id: "chikuzen", name: "筑前", pref: "福岡県（北西部）"},
-            {id: "chikugo", name: "筑後", pref: "福岡県（南部）"},
-            {id: "buzen", name: "豊前", pref: "福岡県（東部）、大分県（北部）"},
-            {id: "bungo", name: "豊後", pref: "大分県（中南部）"},
-            {id: "hizen", name: "肥前", pref: "佐賀県、長崎県（本土）"},
-            {id: "higo", name: "肥後", pref: "熊本県"},
-            {id: "hyuga", name: "日向", pref: "宮崎県"},
-            {id: "osumi", name: "大隅", pref: "鹿児島県（東部）"},
-            {id: "satsuma", name: "薩摩", pref: "鹿児島県（西部）"},
-            {id: "iki", name: "壱岐", pref: "長崎県（壱岐島）"},
-            {id: "tsushima", name: "対馬", pref: "長崎県（対馬）"},
-            // その他
-            {id: "ryukyu", name: "琉球", pref: "沖縄県"},
-            {id: "ezo", name: "蝦夷", pref: "北海道"}
-        ];
-
-        let userProgress = {};
-        let currentQueue = [];
-        let currentIdx = 0;
-        let isAnswerShown = false;
-
-        let startX = 0;
-        let currentX = 0;
-        const card = document.getElementById('card');
-        const stampMemorized = document.getElementById('stamp-memorized');
-        const stampUnknown = document.getElementById('stamp-unknown');
-
-        function initApp() {
-            const saved = localStorage.getItem('province_quiz_progress');
-            if (saved) {
-                userProgress = JSON.parse(saved);
-            } else {
-                provincesData.forEach(p => userProgress[p.id] = 'untested');
-                saveProgress();
-            }
-            buildQueue();
-            setupTouchEvents();
-            showNextCard();
-        }
-
-        function saveProgress() {
-            localStorage.setItem('province_quiz_progress', JSON.stringify(userProgress));
-        }
-
-        function buildQueue() {
-            const unknowns = provincesData.filter(p => userProgress[p.id] === 'unknown');
-            const untesteds = provincesData.filter(p => userProgress[p.id] === 'untested');
-            currentQueue = [...shuffle(unknowns), ...shuffle(untesteds)];
-            currentIdx = 0;
-            if (currentQueue.length === 0) {
-                currentQueue = shuffle([...provincesData]);
-            }
-        }
-
-        function shuffle(array) {
-            return array.sort(() => Math.random() - 0.5);
-        }
-
-        function showNextCard() {
-            if (currentIdx >= currentQueue.length) buildQueue();
-
-            const current = currentQueue[currentIdx];
-            if (!current) return;
-
-            // 初期化
-            card.style.transition = 'none';
-            card.style.transform = 'translateX(0px) rotate(0deg)';
-            card.style.opacity = '1';
-            stampMemorized.style.opacity = '0';
-            stampUnknown.style.opacity = '0';
-            
-            isAnswerShown = false;
-            document.getElementById('hint').style.display = 'block';
-            document.getElementById('answer').classList.remove('show');
-            document.getElementById('action-buttons').classList.remove('show');
-
-            // データセット
-            document.getElementById('province').innerText = current.name;
-            document.getElementById('pref').innerText = current.pref;
-
-            // プログレスバー更新
-            const totalDone = provincesData.filter(p => userProgress[p.id] === 'memorized').length;
-            const percentage = (totalDone / provincesData.length) * 100;
-            document.getElementById('progress').style.width = `${percentage}%`;
-            document.getElementById('counter').innerText = `${totalDone} 記憶済み (残り: ${currentQueue.length - currentIdx})`;
-        }
-
-        function showAnswer() {
-            if (isAnswerShown) return;
-            isAnswerShown = true;
-            document.getElementById('hint').style.display = 'none';
-            document.getElementById('answer').classList.add('show');
-            document.getElementById('action-buttons').classList.add('show');
-        }
-
-        function handleAction(isMemorized) {
-            const current = currentQueue[currentIdx];
-            userProgress[current.id] = isMemorized ? 'memorized' : 'unknown';
-            saveProgress();
-            currentIdx++;
-            showNextCard();
-        }
-
-        function triggerAction(isMemorized) {
-            if (!isAnswerShown) return;
-            card.style.transition = 'transform 0.3s ease-out, opacity 0.3s ease-out';
-            if (isMemorized) {
-                stampMemorized.style.opacity = '1';
-                card.style.transform = 'translateX(500px) rotate(30deg)';
-            } else {
-                stampUnknown.style.opacity = '1';
-                card.style.transform = 'translateX(-500px) rotate(-30deg)';
-            }
-            card.style.opacity = '0';
-            setTimeout(() => handleAction(isMemorized), 300);
-        }
-
-        function setupTouchEvents() {
-            card.addEventListener('touchstart', (e) => {
-                startX = e.touches[0].clientX;
-                card.style.transition = 'none';
-            });
-
-            card.addEventListener('touchmove', (e) => {
-                if (!isAnswerShown) return;
-                currentX = e.touches[0].clientX;
-                const diffX = currentX - startX;
-                card.style.transform = `translateX(${diffX}px) rotate(${diffX / 15}deg)`;
-
-                const opacity = Math.min(Math.abs(diffX) / 100, 1);
-                if (diffX > 0) {
-                    stampMemorized.style.opacity = opacity;
-                    stampUnknown.style.opacity = 0;
-                } else {
-                    stampUnknown.style.opacity = opacity;
-                    stampMemorized.style.opacity = 0;
-                }
-            });
-
-            card.addEventListener('touchend', (e) => {
-                if (!isAnswerShown) return;
-                card.style.transition = 'transform 0.2s ease-out, opacity 0.2s ease-out';
-                const diffX = currentX - startX;
-
-                if (Math.abs(diffX) < 100) {
-                    card.style.transform = 'translateX(0px) rotate(0deg)';
-                    stampMemorized.style.opacity = '0';
-                    stampUnknown.style.opacity = '0';
-                } else if (diffX > 100) {
-                    card.style.transform = 'translateX(500px) rotate(30deg)';
-                    card.style.opacity = '0';
-                    setTimeout(() => handleAction(true), 200);
-                } else if (diffX < -100) {
-                    card.style.transform = 'translateX(-500px) rotate(-30deg)';
-                    card.style.opacity = '0';
-                    setTimeout(() => handleAction(false), 200);
-                }
-                startX = 0;
-                currentX = 0;
-            });
-        }
-
-        function switchPage(pageName) {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-            if (pageName === 'quiz') {
-                document.getElementById('quiz-page').classList.add('active');
-                document.querySelectorAll('.nav-btn')[0].classList.add('active');
-                showNextCard();
-            } else if (pageName === 'list') {
-                document.getElementById('list-page').classList.add('active');
-                document.querySelectorAll('.nav-btn')[1].classList.add('active');
-                renderList();
-            }
-        }
-
-        function renderList() {
-            const listContainer = document.getElementById('item-list');
-            listContainer.innerHTML = '';
-            let mCount = 0, uCount = 0, tCount = 0;
-
-            provincesData.forEach(p => {
-                const status = userProgress[p.id];
-                if (status === 'memorized') mCount++;
-                else if (status === 'unknown') uCount++;
-                else tCount++;
-
-                const item = document.createElement('div');
-                item.className = 'province-item';
-                let badgeHtml = status === 'memorized' ? '<span class="badge badge-memorized">記憶済み</span>' : 
-                                status === 'unknown' ? '<span class="badge badge-unknown">未記憶</span>' : 
-                                '<span class="badge badge-untested">未出題</span>';
-
-                item.innerHTML = `
-                    <div class="item-info">
-                        <div class="item-name">${p.name}</div>
-                        <div class="item-pref">${p.pref}</div>
-                    </div>
-                    ${badgeHtml}
-                `;
-                listContainer.appendChild(item);
-            });
-            document.getElementById('stats').innerText = `記憶済み: ${mCount} / 未記憶: ${uCount} / 未出題: ${tCount}`;
-        }
-
-        function resetStorage() {
-            if (confirm('これまでの学習記録をすべて削除して初期化しますか？')) {
-                provincesData.forEach(p => userProgress[p.id] = 'untested');
-                saveProgress();
-                buildQueue();
-                renderList();
-                alert('初期化しました。');
-            }
-        }
-
-        window.onload = initApp;
-    </script>
+<div class="app">
+<header class="topbar"><div class="brand">旧国68 <small>学習帳</small></div><button class="iconbtn" onclick="openInfo()">ⓘ</button></header>
+<main>
+<section id="home" class="page active">
+  <div class="hero"><h1>旧国を、つながりで覚える。</h1><p>読み・漢字・位置・現在の都道府県・五畿七道を別々に記録して復習します。</p><div class="heroRow"><div class="metric"><strong id="heroDue">0</strong><span>復習待ち</span></div><div class="metric"><strong id="heroMastery">0%</strong><span>総合習熟</span></div><div class="metric"><strong id="heroSeen">0</strong><span>学習した国</span></div></div></div>
+  <button class="primary" onclick="startStudy('smart')">おすすめ復習を始める</button>
+  <div class="sectionTitle">特訓モード</div><div class="modeGrid">
+    <button class="mode" onclick="startStudy('reading')"><span class="modeIcon">あ</span><b>読み</b><small>漢字から読みを答える</small></button>
+    <button class="mode" onclick="startStudy('kanji')"><span class="modeIcon">漢</span><b>漢字</b><small>読みから国名を選ぶ</small></button>
+    <button class="mode" onclick="startStudy('mapName')"><span class="modeIcon">⌖</span><b>位置 → 国名</b><small>強調された場所を答える</small></button>
+    <button class="mode" onclick="startStudy('nameMap')"><span class="modeIcon">◎</span><b>国名 → 位置</b><small>地図を直接タップする</small></button>
+    <button class="mode" onclick="startStudy('modern')"><span class="modeIcon">県</span><b>現在地</b><small>現在の都道府県を答える</small></button>
+    <button class="mode" onclick="startStudy('circuit')"><span class="modeIcon">道</span><b>五畿七道</b><small>所属する区分を答える</small></button>
+  </div>
+  <div class="sectionTitle">使い方</div><div class="notice">68の令制国を本体として収録しています。地図は国同士の位置関係を素早く覚えるための模式図で、歴史的な国境線そのものではありません。詳細な位置は「現在地」の説明と併用してください。</div>
+</section>
+<section id="study" class="page">
+  <div class="studyHead"><button class="back" onclick="finishStudy()">‹</button><div class="grow"><div class="progress"><div id="studyProgress"></div></div><div class="studyMeta"><span id="studyMode"></span><span id="studyCount"></span></div></div></div>
+  <div class="panel card" id="studyCard">
+    <div class="eyebrow" id="questionLabel"></div><div class="prompt" id="prompt"></div><div class="subprompt" id="subprompt"></div>
+    <div id="studyMap" class="studyMap" style="display:none"></div><div id="choices" class="choices"></div>
+    <button id="reveal" class="reveal" style="display:none" onclick="revealAnswer()">答えを見る</button>
+    <div id="answerBox" class="answerBox"><div class="answerMain" id="answerMain"></div><div class="answerReading" id="answerReading"></div><div class="answerDetails" id="answerDetails"></div></div>
+    <div id="feedback" class="feedback"></div><div id="rating" class="rating"><button class="rate r0" onclick="rate(0)">もう一度</button><button class="rate r1" onclick="rate(1)">難しい</button><button class="rate r2" onclick="rate(2)">分かった</button><button class="rate r3" onclick="rate(3)">簡単</button></div>
+  </div>
+</section>
+<section id="map" class="page"><div class="panel mapPanel"><div class="mapTools"><div><b>旧国模式地図</b><div style="font-size:11px;color:var(--muted);margin-top:3px">国をタップすると詳細を表示</div></div><div class="seg"><button id="labelOn" class="active" onclick="setLabels(true)">国名あり</button><button id="labelOff" onclick="setLabels(false)">国名なし</button></div></div><div id="freeMap"></div><div class="mapLegend">東西・隣接関係を学習するための模式配置です。島国や狭い国もタップしやすい大きさにしています。</div></div></section>
+<section id="list" class="page"><div class="listTools"><input id="search" class="search" placeholder="国名・読み・都道府県で検索" oninput="renderList()"><select id="circuitFilter" class="select" onchange="renderList()"><option value="">すべて</option><option>畿内</option><option>東海道</option><option>東山道</option><option>北陸道</option><option>山陰道</option><option>山陽道</option><option>南海道</option><option>西海道</option></select></div><div id="countryList" class="countryList"></div></section>
+<section id="stats" class="page"><div class="statsGrid"><div class="panel statCard"><strong id="statAnswered">0</strong><span>累計回答</span></div><div class="panel statCard"><strong id="statAccuracy">—</strong><span>自動採点正答率</span></div><div class="panel statCard"><strong id="statMastery">0%</strong><span>総合習熟</span></div></div><div class="sectionTitle">能力別</div><div id="skillRows" class="panel skillRows"></div><div class="sectionTitle">復習優先</div><div id="weakList" class="panel weakList"></div><div class="sectionTitle">設定</div><div class="panel settings"><div class="setting"><span>選択問題の正解後も自己評価する</span><input id="rateAfterChoice" type="checkbox" onchange="saveSettings()"></div><div class="setting"><span>学習データ</span><button class="danger" onclick="resetProgress()">初期化</button></div></div></section>
+</main>
+<nav class="bottom"><button data-page="home" class="active" onclick="go('home')"><span>⌂</span>学習</button><button data-page="map" onclick="go('map')"><span>⌖</span>地図</button><button data-page="list" onclick="go('list')"><span>☷</span>一覧</button><button data-page="stats" onclick="go('stats')"><span>◫</span>記録</button></nav>
+</div>
+<div id="detailModal" class="modal" onclick="if(event.target===this)closeDetail()"><div class="sheet"><button class="close" onclick="closeDetail()">×</button><h2 id="dName"></h2><div id="dReading" class="furigana"></div><dl><dt>五畿七道</dt><dd id="dCircuit"></dd><dt>現在</dt><dd id="dModern"></dd><dt>関連</dt><dd id="dNote"></dd><dt>習熟度</dt><dd id="dMastery"></dd></dl><div id="dMap" class="sheetMap"></div></div></div>
+<div id="infoModal" class="modal" onclick="if(event.target===this)this.classList.remove('show')"><div class="sheet"><button class="close" onclick="document.getElementById('infoModal').classList.remove('show')">×</button><h2>この学習帳について</h2><p style="color:var(--muted);line-height:1.7;font-size:13px">令制国68国を対象に、国名・読み・地理・現在の都道府県・五畿七道を反復する個人用暗記帳です。学習記録はこのブラウザの localStorage にのみ保存されます。</p><p style="color:var(--muted);line-height:1.7;font-size:13px">旧国の範囲は時代により細部が変わり得ます。「現在」は暗記用途の概略対応です。模式地図は境界の厳密な復元図ではありません。</p></div></div>
+<script>
+const RAW=[
+['yamashiro','山城','やましろ','畿内','京都府南部',455,335,'平安京・京都を含む畿内の国。',''],['yamato','大和','やまと','畿内','奈良県',470,370,'古代国家の中心地。奈良盆地を中心とする。',''],['kawachi','河内','かわち','畿内','大阪府東部',440,375,'和泉・摂津とともに現在の大阪府域を分ける。',''],['izumi','和泉','いずみ','畿内','大阪府南西部',425,407,'河内から分立した国。泉州の名称にも残る。',''],['settsu','摂津','せっつ','畿内','大阪府北中部・兵庫県南東部',415,345,'大阪・神戸の双方にまたがる。',''],
+['iga','伊賀','いが','東海道','三重県西部',505,355,'伊勢の西側。伊賀盆地を中心とする。',''],['ise','伊勢','いせ','東海道','三重県北中部',530,382,'伊勢神宮で知られる。',''],['shima','志摩','しま','東海道','三重県志摩半島',548,418,'志摩半島を中心とする小国。',''],['owari','尾張','おわり','東海道','愛知県西部',550,340,'名古屋周辺を含む。三河と対で覚える。',''],['mikawa','三河','みかわ','東海道','愛知県東部',590,345,'愛知県東部。尾張の東側。',''],['totomi','遠江','とおとうみ','東海道','静岡県西部',625,355,'難読国名。「遠つ淡海」に由来するとされる。',''],['suruga','駿河','するが','東海道','静岡県中部',665,350,'富士山南麓・駿河湾周辺。',''],['izu','伊豆','いず','東海道','静岡県伊豆半島・伊豆諸島',695,395,'伊豆半島のほか伊豆諸島も含む。',''],['kai','甲斐','かい','東海道','山梨県',610,310,'現在の山梨県にほぼ対応。',''],['sagami','相模','さがみ','東海道','神奈川県の大部分',650,335,'神奈川県の大部分。東側の一部は武蔵。',''],['musashi','武蔵','むさし','東海道','東京都・埼玉県・神奈川県東部',670,290,'東京・埼玉を中心とする大国。',''],['awa_kanto','安房','あわ','東海道','千葉県南部',720,365,'房総半島南部。「阿波」と同音なので注意。','awa'],['kazusa','上総','かずさ','東海道','千葉県中南部',730,330,'下総より南に位置する。「上」が京都に近い側。','so'],['shimousa','下総','しもうさ','東海道','千葉県北部・茨城県南西部',730,292,'上総の北側。現在の県境を越えて茨城県にも及ぶ。','so'],['hitachi','常陸','ひたち','東海道','茨城県の大部分',775,250,'難読国名。茨城県の大部分に対応。',''],
+['omi','近江','おうみ','東山道','滋賀県',485,320,'琵琶湖を囲む。「近つ淡海」に由来するとされる。',''],['mino','美濃','みの','東山道','岐阜県南部',520,305,'岐阜県南部。飛騨と対で覚える。',''],['hida','飛騨','ひだ','東山道','岐阜県北部',540,270,'岐阜県北部の山地。',''],['shinano','信濃','しなの','東山道','長野県',585,265,'現在の長野県にほぼ対応。',''],['kozuke','上野','こうずけ','東山道','群馬県',630,250,'難読。「上毛（じょうもう）」の名称にもつながる。','no'],['shimotsuke','下野','しもつけ','東山道','栃木県',680,240,'上野と対。現在の栃木県にほぼ対応。','no'],['mutsu','陸奥','むつ','東山道','東北地方太平洋側を中心とする広域',750,80,'時代により範囲が変化する非常に広い国。',''],['dewa','出羽','でわ','東山道','山形県・秋田県を中心とする地域',680,115,'山形・秋田を中心とする。後世に羽前・羽後へ分かれた。',''],
+['wakasa','若狭','わかさ','北陸道','福井県南部',478,280,'若狭湾沿岸。越前とともに福井県域を構成。',''],['echizen','越前','えちぜん','北陸道','福井県北部',510,250,'越前・越中・越後は都に近い順で覚えやすい。','echi'],['kaga','加賀','かが','北陸道','石川県南部',540,220,'石川県南部。能登と対で覚える。',''],['noto','能登','のと','北陸道','石川県北部・能登半島',555,180,'能登半島を中心とする。',''],['etchu','越中','えっちゅう','北陸道','富山県',590,220,'越前と越後の間。現在の富山県。','echi'],['echigo','越後','えちご','北陸道','新潟県本州部',650,180,'「越」の三国のうち最も東。','echi'],['sado','佐渡','さど','北陸道','新潟県佐渡島',610,145,'佐渡島一島を中心とする。',''],
+['tamba','丹波','たんば','山陰道','京都府中部・兵庫県中東部',420,310,'丹後と対。京都・兵庫の両府県にまたがる。','tan'],['tango','丹後','たんご','山陰道','京都府北部',395,280,'丹波から分立した北側の国。','tan'],['tajima','但馬','たじま','山陰道','兵庫県北部',365,295,'兵庫県北部。播磨・摂津などと同県内で分かれる。',''],['inaba','因幡','いなば','山陰道','鳥取県東部',330,290,'鳥取県東部。伯耆と対。',''],['hoki','伯耆','ほうき','山陰道','鳥取県西部',290,285,'難読。鳥取県西部。',''],['izumo','出雲','いずも','山陰道','島根県東部',245,285,'出雲大社で知られる。島根県東部。',''],['iwami','石見','いわみ','山陰道','島根県西部',200,300,'難読。島根県西部。',''],['oki','隠岐','おき','山陰道','島根県隠岐諸島',245,230,'隠岐諸島を中心とする島国。',''],
+['harima','播磨','はりま','山陽道','兵庫県南西部',385,350,'兵庫県南西部。播州の名称にも残る。',''],['mimasaka','美作','みまさか','山陽道','岡山県北部',325,330,'難読。岡山県北部。',''],['bizen','備前','びぜん','山陽道','岡山県南東部',340,360,'備前・備中・備後の東側。','bi'],['bitchu','備中','びっちゅう','山陽道','岡山県西部',300,360,'備前三国の中央。','bi'],['bingo','備後','びんご','山陽道','広島県東部',260,360,'備前三国の西側で、現在は広島県東部。','bi'],['aki','安芸','あき','山陽道','広島県西部',220,365,'広島県西部。安芸国の宮島で知られる。',''],['suo','周防','すおう','山陽道','山口県東部',175,380,'難読。山口県東部。',''],['nagato','長門','ながと','山陽道','山口県西部',135,370,'山口県西部。周防と対。',''],
+['kii','紀伊','きい','南海道','和歌山県・三重県南部',475,438,'紀州の名でも知られ、現在の県境をまたぐ。',''],['awaji','淡路','あわじ','南海道','兵庫県淡路島',395,405,'淡路島を中心とする。',''],['awa_shikoku','阿波','あわ','南海道','徳島県',360,445,'現在の徳島県。「安房」と同音なので注意。','awa'],['sanuki','讃岐','さぬき','南海道','香川県',330,410,'現在の香川県。讃岐うどんで名称が残る。',''],['iyo','伊予','いよ','南海道','愛媛県',255,440,'現在の愛媛県。',''],['tosa','土佐','とさ','南海道','高知県',300,480,'現在の高知県。',''],
+['chikuzen','筑前','ちくぜん','西海道','福岡県北西部',100,420,'筑後と対。福岡県北西部。','chiku'],['chikugo','筑後','ちくご','西海道','福岡県南部',110,455,'筑前の南側。','chiku'],['buzen','豊前','ぶぜん','西海道','福岡県東部・大分県北部',150,430,'豊後と対。現在の県境をまたぐ。','bu'],['bungo','豊後','ぶんご','西海道','大分県中南部',175,465,'豊前の南側。大分県の大部分。','bu'],['hizen','肥前','ひぜん','西海道','佐賀県・長崎県本土部',60,445,'肥後と対。佐賀・長崎にまたがる。','hi'],['higo','肥後','ひご','西海道','熊本県',115,495,'現在の熊本県にほぼ対応。','hi'],['hyuga','日向','ひゅうが','西海道','宮崎県',180,510,'難読。現在の宮崎県。',''],['osumi','大隅','おおすみ','西海道','鹿児島県東部',155,545,'薩摩とともに鹿児島県本土を分ける。',''],['satsuma','薩摩','さつま','西海道','鹿児島県西部',105,540,'鹿児島県西部。薩摩藩の名称で著名。',''],['iki','壱岐','いき','西海道','長崎県壱岐島',55,400,'壱岐島を中心とする島国。',''],['tsushima','対馬','つしま','西海道','長崎県対馬',15,360,'朝鮮半島との間に位置する島国。','']
+];
+const P=RAW.map(a=>({id:a[0],name:a[1],reading:a[2],circuit:a[3],modern:a[4],x:a[5],y:a[6],note:a[7],family:a[8]}));
+const SKILLS=['reading','kanji','mapName','nameMap','modern','circuit'];
+const LABELS={reading:'読み',kanji:'漢字',mapName:'位置→国名',nameMap:'国名→位置',modern:'現在の都道府県',circuit:'五畿七道'};
+const STORAGE='oldcountry68_v2'; const SETTINGS='oldcountry68_settings';
+let data=loadData(),settings=JSON.parse(localStorage.getItem(SETTINGS)||'{"rateAfterChoice":false}');
+let session=null,current=null,answered=false,selectedMapId=null;
+function emptySkill(){return{level:0,streak:0,due:0,seen:0,lapses:0,last:0}}
+function loadData(){let d;try{d=JSON.parse(localStorage.getItem(STORAGE)||'null')}catch(e){};if(!d)d={version:2,total:0,correct:0,countries:{}};P.forEach(p=>{d.countries[p.id]??={};SKILLS.forEach(s=>d.countries[p.id][s]??=emptySkill())});return d}
+function save(){localStorage.setItem(STORAGE,JSON.stringify(data))}
+function saveSettings(){settings.rateAfterChoice=document.getElementById('rateAfterChoice').checked;localStorage.setItem(SETTINGS,JSON.stringify(settings))}
+function avgLevel(p){return SKILLS.reduce((n,s)=>n+data.countries[p.id][s].level,0)/(SKILLS.length*5)}
+function overall(){return P.reduce((n,p)=>n+avgLevel(p),0)/P.length}
+function dueCount(){let now=Date.now(),n=0;P.forEach(p=>SKILLS.forEach(s=>{let x=data.countries[p.id][s];if(x.seen&&x.due<=now)n++}));return n}
+function seenCountries(){return P.filter(p=>SKILLS.some(s=>data.countries[p.id][s].seen)).length}
+function go(id){document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.id===id));document.querySelectorAll('.bottom button').forEach(x=>x.classList.toggle('active',x.dataset.page===id));if(id==='home')renderHome();if(id==='map')renderFreeMap();if(id==='list')renderList();if(id==='stats')renderStats()}
+function renderHome(){document.getElementById('heroDue').textContent=dueCount();document.getElementById('heroMastery').textContent=Math.round(overall()*100)+'%';document.getElementById('heroSeen').textContent=seenCountries()}
+function startStudy(mode){session={mode,count:0,target:12,queue:[]};document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));document.getElementById('study').classList.add('active');document.querySelectorAll('.bottom button').forEach(x=>x.classList.remove('active'));nextQuestion()}
+function finishStudy(){session=null;go('home')}
+function pickSmart(){let now=Date.now(),items=[];P.forEach(p=>SKILLS.forEach(s=>{let x=data.countries[p.id][s];let due=x.seen&&x.due<=now;let score=(5-x.level)*18+(due?45:0)+(x.seen?0:20)+Math.random()*12;items.push({p,s,score})}));items.sort((a,b)=>b.score-a.score);return items[0]}
+function pickFor(skill){let pool=P.map(p=>({p,s:skill,x:data.countries[p.id][skill]}));pool.sort((a,b)=>{let ad=a.x.seen&&a.x.due<=Date.now()?1:0,bd=b.x.seen&&b.x.due<=Date.now()?1:0;return bd-ad||(a.x.level-b.x.level)||Math.random()-.5});return pool[0]}
+function nextQuestion(){if(!session)return;if(session.count>=session.target){alert('このセットは終了です。記録に反映しました。');finishStudy();return}let item=session.mode==='smart'?pickSmart():pickFor(session.mode);current={...item,p:item.p,s:item.s};answered=false;selectedMapId=null;session.count++;renderQuestion()}
+function renderQuestion(){const p=current.p,s=current.s;document.getElementById('studyMode').textContent=session.mode==='smart'?'おすすめ復習':LABELS[session.mode];document.getElementById('studyCount').textContent=session.count+' / '+session.target;document.getElementById('studyProgress').style.width=((session.count-1)/session.target*100)+'%';document.getElementById('choices').innerHTML='';document.getElementById('studyMap').innerHTML='';document.getElementById('studyMap').style.display='none';document.getElementById('answerBox').classList.remove('show');document.getElementById('rating').classList.remove('show');document.getElementById('feedback').className='feedback';document.getElementById('reveal').style.display='none';document.getElementById('prompt').className='prompt';let q='',sub='',label='';
+ if(s==='reading'){label='読みを答える';q=p.name;sub='この旧国名の読みは？';renderChoices(p.reading,'reading')}
+ if(s==='kanji'){label='漢字を答える';q=p.reading;sub='漢字で書くと？';document.getElementById('prompt').className='prompt reading';renderChoices(p.name,'name')}
+ if(s==='modern'){label='現在地を答える';q=p.name;sub='現在のおおよその都道府県は？';renderChoices(p.modern,'modern')}
+ if(s==='circuit'){label='五畿七道';q=p.name;sub='どの区分に属する？';renderCircuitChoices(p.circuit)}
+ if(s==='mapName'){label='位置から国名';q='この場所は？';sub='黄色で示した旧国を答える';document.getElementById('studyMap').style.display='block';document.getElementById('studyMap').innerHTML=mapHTML({labels:false,target:p.id,interactive:false});renderChoices(p.name,'name')}
+ if(s==='nameMap'){label='国名から位置';q=p.name;sub='地図上の位置をタップ';document.getElementById('studyMap').style.display='block';document.getElementById('studyMap').innerHTML=mapHTML({labels:false,interactive:true,click:'answerMap'});document.getElementById('choices').innerHTML=''}
+ document.getElementById('questionLabel').textContent=label;document.getElementById('prompt').textContent=q;document.getElementById('subprompt').textContent=sub}
+function distractors(p,field){let pool=P.filter(x=>x.id!==p.id);if(p.family){let f=pool.filter(x=>x.family===p.family);pool=[...f,...pool.filter(x=>x.family!==p.family)]}else{let c=pool.filter(x=>x.circuit===p.circuit);pool=[...c,...pool.filter(x=>x.circuit!==p.circuit)]}let vals=[];for(let x of pool.sort(()=>Math.random()-.5)){let v=x[field];if(!vals.includes(v)&&v!==p[field])vals.push(v);if(vals.length===3)break}return vals}
+function renderChoices(correct,field){let vals=[correct,...distractors(current.p,field)].sort(()=>Math.random()-.5);document.getElementById('choices').innerHTML=vals.map(v=>`<button class="choice" onclick='choose(this,${JSON.stringify(v)},${JSON.stringify(correct)})'>${v}</button>`).join('')}
+function renderCircuitChoices(correct){let vals=[correct];['畿内','東海道','東山道','北陸道','山陰道','山陽道','南海道','西海道'].filter(x=>x!==correct).sort(()=>Math.random()-.5).slice(0,3).forEach(x=>vals.push(x));vals.sort(()=>Math.random()-.5);document.getElementById('choices').innerHTML=vals.map(v=>`<button class="choice" onclick='choose(this,${JSON.stringify(v)},${JSON.stringify(correct)})'>${v}</button>`).join('')}
+function choose(btn,value,correct){if(answered)return;answered=true;let ok=value===correct;document.querySelectorAll('#choices .choice').forEach(b=>{if(b.textContent===correct)b.classList.add('correct')});if(!ok)btn.classList.add('wrong');data.total++;if(ok)data.correct++;showAnswer(ok);if(settings.rateAfterChoice){document.getElementById('rating').classList.add('show')}else{applyResult(ok?2:0);setTimeout(nextQuestion,ok?800:1250)}}
+function answerMap(id){if(answered)return;selectedMapId=id;answered=true;let ok=id===current.p.id;document.querySelectorAll('#studyMap .country').forEach(g=>{if(g.dataset.id===current.p.id)g.classList.add('correct');else if(g.dataset.id===id&&!ok)g.classList.add('wrong')});data.total++;if(ok)data.correct++;showAnswer(ok);if(settings.rateAfterChoice)document.getElementById('rating').classList.add('show');else{applyResult(ok?2:0);setTimeout(nextQuestion,ok?900:1500)}}
+function showAnswer(ok){let p=current.p;document.getElementById('answerMain').textContent=p.name;document.getElementById('answerReading').textContent=p.reading;document.getElementById('answerDetails').innerHTML=`${p.circuit} ／ ${p.modern}<br>${p.note}`;document.getElementById('answerBox').classList.add('show');let f=document.getElementById('feedback');f.className='feedback show '+(ok?'ok':'bad');f.textContent=ok?'正解':'正解を確認してから次へ'}
+function revealAnswer(){if(answered)return;answered=true;showAnswer(true);document.getElementById('rating').classList.add('show')}
+function rate(r){applyResult(r);nextQuestion()}
+function applyResult(r){let x=data.countries[current.p.id][current.s],now=Date.now();x.seen++;x.last=now;if(r===0){x.level=Math.max(0,x.level-1);x.streak=0;x.lapses++;x.due=now+4*60*1000}else if(r===1){x.level=Math.min(5,Math.max(1,x.level));x.streak++;x.due=now+12*60*60*1000}else if(r===2){x.level=Math.min(5,x.level+1);x.streak++;x.due=now+[0,1,2,4,8,16][x.level]*86400000}else{x.level=Math.min(5,x.level+2);x.streak++;x.due=now+[0,2,4,8,16,30][x.level]*86400000}save()}
+function mapHTML(o={}){let cls=o.labels===false?'countryMap hideLabels':'countryMap';let groups=P.map(p=>{let c=p.id===o.target?' target':'';let oc=o.interactive?` onclick="${o.click||'openDetail'}('${p.id}')"`:'';return `<g class="country${c}" data-id="${p.id}"${oc}><rect x="${p.x}" y="${p.y}" width="52" height="27"></rect><text x="${p.x+26}" y="${p.y+14}">${p.name}</text></g>`}).join('');return `<div class="mapWrap"><svg class="${cls}" viewBox="0 0 840 590" aria-label="旧国模式地図"><path d="M25 380 C120 410,170 430,220 390 S360 330,420 350 S545 280,620 300 S715 250,790 110" fill="none" stroke="#dfe5ee" stroke-width="22" stroke-linecap="round" opacity=".55"/>${groups}</svg></div>`}
+function renderFreeMap(){document.getElementById('freeMap').innerHTML=mapHTML({labels:true,interactive:true,click:'openDetail'})}
+function setLabels(on){let svg=document.querySelector('#freeMap svg');if(svg)svg.classList.toggle('hideLabels',!on);document.getElementById('labelOn').classList.toggle('active',on);document.getElementById('labelOff').classList.toggle('active',!on)}
+function openDetail(id){let p=P.find(x=>x.id===id);document.getElementById('dName').textContent=p.name;document.getElementById('dReading').textContent=p.reading;document.getElementById('dCircuit').textContent=p.circuit;document.getElementById('dModern').textContent=p.modern;document.getElementById('dNote').textContent=p.note;document.getElementById('dMastery').textContent=Math.round(avgLevel(p)*100)+'%';document.getElementById('dMap').innerHTML=mapHTML({labels:true,target:p.id});document.getElementById('detailModal').classList.add('show')}
+function closeDetail(){document.getElementById('detailModal').classList.remove('show')}
+function openInfo(){document.getElementById('infoModal').classList.add('show')}
+function renderList(){let q=(document.getElementById('search')?.value||'').trim().toLowerCase(),c=document.getElementById('circuitFilter')?.value||'';let arr=P.filter(p=>(!c||p.circuit===c)&&(!q||[p.name,p.reading,p.modern,p.circuit].join(' ').toLowerCase().includes(q)));document.getElementById('countryList').innerHTML=arr.length?arr.map(p=>`<button class="panel countryItem" onclick="openDetail('${p.id}')" style="text-align:left;border:1px solid var(--line)"><h3>${p.name}</h3><div class="reading">${p.reading}</div><p>${p.modern}</p><footer><span class="tag">${p.circuit}</span><span class="masteryDot">習熟 ${Math.round(avgLevel(p)*100)}%</span></footer></button>`).join(''):'<div class="empty">該当する国がありません</div>'}
+function renderStats(){document.getElementById('statAnswered').textContent=data.total;document.getElementById('statAccuracy').textContent=data.total?Math.round(data.correct/data.total*100)+'%':'—';document.getElementById('statMastery').textContent=Math.round(overall()*100)+'%';document.getElementById('rateAfterChoice').checked=!!settings.rateAfterChoice;let rows=SKILLS.map(s=>{let v=P.reduce((n,p)=>n+data.countries[p.id][s].level,0)/(P.length*5);return `<div class="skillRow"><div class="skillTop"><span>${LABELS[s]}</span><span>${Math.round(v*100)}%</span></div><div class="miniBar"><div style="width:${v*100}%"></div></div></div>`}).join('');document.getElementById('skillRows').innerHTML=rows;let weak=[];P.forEach(p=>SKILLS.forEach(s=>{let x=data.countries[p.id][s];if(x.seen)weak.push({p,s,x,score:x.level-x.lapses*.6})}));weak.sort((a,b)=>a.score-b.score);document.getElementById('weakList').innerHTML=weak.length?weak.slice(0,10).map(w=>`<div class="weak"><span><b>${w.p.name}</b>　${LABELS[w.s]}</span><span>Lv.${w.x.level}</span></div>`).join(''):'<div class="empty">まだ学習記録がありません</div>'}
+function resetProgress(){if(confirm('学習記録をすべて初期化しますか？')){localStorage.removeItem(STORAGE);data=loadData();save();renderStats();renderHome()}}
+renderHome();
+</script>
 </body>
 </html>
