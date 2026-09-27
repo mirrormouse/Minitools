@@ -15,32 +15,33 @@
   <div class="hero"><h1>旧国を、つながりで覚える。</h1><p>読み・漢字・位置・現在の都道府県・五畿七道を別々に記録して復習します。</p><div class="heroRow"><div class="metric"><strong id="heroDue">0</strong><span>復習待ち</span></div><div class="metric"><strong id="heroMastery">0%</strong><span>総合習熟</span></div><div class="metric"><strong id="heroSeen">0</strong><span>学習した国</span></div></div></div>
   <button class="primary" onclick="startStudy('smart')">おすすめ復習を始める</button>
   <div class="sectionTitle">特訓モード</div><div class="modeGrid">
-    <button class="mode" onclick="startStudy('reading')"><span class="modeIcon">あ</span><b>読み</b><small>漢字から読みを答える</small></button>
-    <button class="mode" onclick="startStudy('kanji')"><span class="modeIcon">漢</span><b>漢字</b><small>読みから国名を選ぶ</small></button>
-    <button class="mode" onclick="startStudy('mapName')"><span class="modeIcon">⌖</span><b>位置 → 国名</b><small>実地図上の位置から答える</small></button>
-    <button class="mode" onclick="startStudy('nameMap')"><span class="modeIcon">◎</span><b>国名 → 位置</b><small>実地図を直接タップする</small></button>
-    <button class="mode" onclick="startStudy('modern')"><span class="modeIcon">県</span><b>現在地</b><small>現在の都道府県を答える</small></button>
-    <button class="mode" onclick="startStudy('circuit')"><span class="modeIcon">道</span><b>五畿七道</b><small>所属する区分を答える</small></button>
+    <button class="mode" onclick="startStudy('reading')"><span class="modeIcon">あ</span><b>読み</b><small>漢字を見て読みを想起</small></button>
+    <button class="mode" onclick="startStudy('kanji')"><span class="modeIcon">漢</span><b>漢字</b><small>読みを見て漢字を想起</small></button>
+    <button class="mode" onclick="startStudy('mapName')"><span class="modeIcon">⌖</span><b>位置 → 国名</b><small>強調範囲から国名を想起</small></button>
+    <button class="mode" onclick="startStudy('nameMap')"><span class="modeIcon">◎</span><b>国名 → 位置</b><small>国名から位置を想起</small></button>
+    <button class="mode" onclick="startStudy('modern')"><span class="modeIcon">県</span><b>現在地</b><small>現在の都道府県を想起</small></button>
+    <button class="mode" onclick="startStudy('circuit')"><span class="modeIcon">道</span><b>五畿七道</b><small>所属区分を想起</small></button>
   </div>
-  <div class="sectionTitle">地図について</div><div class="notice">位置問題は旧国境を描いた実際の日本地図を使用します。スマホでは地図全体を端末幅に収めたままタップでき、PCでも日本列島の形と旧国境を同時に確認できます。</div>
+  <div class="sectionTitle">学習方法</div><div class="notice">4択は使いません。問題を見て頭の中で答えを思い出し、カードをタップして正解と解説を確認したあと、「覚えていない / あやしい / 覚えていた」で自己評価します。</div>
 </section>
 <section id="study" class="page">
   <div class="studyHead"><button class="back" onclick="finishStudy()">‹</button><div class="grow"><div class="progress"><div id="studyProgress"></div></div><div class="studyMeta"><span id="studyMode"></span><span id="studyCount"></span></div></div></div>
-  <div class="panel card" id="studyCard">
+  <div class="panel card recallCard" id="studyCard" onclick="revealRecall(event)">
     <div class="eyebrow" id="questionLabel"></div><div class="prompt" id="prompt"></div><div class="subprompt" id="subprompt"></div>
     <div id="studyMap" class="studyMap" style="display:none"></div><div id="choices" class="choices"></div>
     <div id="answerBox" class="answerBox"><div class="answerMain" id="answerMain"></div><div class="answerReading" id="answerReading"></div><div class="answerDetails" id="answerDetails"></div></div>
-    <div id="feedback" class="feedback"></div><div id="rating" class="rating"><button class="rate r0" onclick="rate(0)">もう一度</button><button class="rate r1" onclick="rate(1)">難しい</button><button class="rate r2" onclick="rate(2)">分かった</button><button class="rate r3" onclick="rate(3)">簡単</button></div>
+    <div id="feedback" class="feedback"></div><div id="rating" class="rating recallRating"><button class="rate r0" onclick="event.stopPropagation();rateRecall(0)">覚えていない</button><button class="rate r1" onclick="event.stopPropagation();rateRecall(1)">あやしい</button><button class="rate r3" onclick="event.stopPropagation();rateRecall(2)">覚えていた</button></div>
   </div>
 </section>
-<section id="map" class="page"><div class="panel mapPanel"><div class="mapTools"><div><b>旧国境地図</b><div style="font-size:11px;color:var(--muted);margin-top:3px">地図上の位置をタップすると最寄りの旧国を表示</div></div><div class="seg"><button id="labelOn" class="active" onclick="setLabels(true)">国名あり</button><button id="labelOff" onclick="setLabels(false)">国名なし</button></div></div><div id="freeMap"></div><div class="mapLegend">背景には旧国境を描いた日本地図を使用しています。名称ラベルと出題マーカーは学習用の重ね合わせです。</div><div class="attribution">Base map: “Provinces of Japan”, Wikimedia Commons, CC BY-SA 3.0 / CC BY 2.5 / GFDL.</div></div></section>
+<section id="map" class="page"><div class="panel mapPanel"><div class="mapTools"><div><b>旧国境地図</b><div style="font-size:11px;color:var(--muted);margin-top:3px">国名あり / なしを切り替えて確認</div></div><div class="seg"><button id="labelOn" class="active" onclick="setLabels(true)">国名あり</button><button id="labelOff" onclick="setLabels(false)">国名なし</button></div></div><div id="freeMap"></div><div class="mapLegend">位置問題では、Wikimedia Commons にある各旧国のハイライト地図をそのまま使うため、学習マーカーの座標ずれは発生しません。</div><div class="attribution">Base maps: Wikimedia Commons, “Provinces of Japan” series.</div></div></section>
 <section id="list" class="page"><div class="listTools"><input id="search" class="search" placeholder="国名・読み・都道府県で検索" oninput="renderList()"><select id="circuitFilter" class="select" onchange="renderList()"><option value="">すべて</option><option>畿内</option><option>東海道</option><option>東山道</option><option>北陸道</option><option>山陰道</option><option>山陽道</option><option>南海道</option><option>西海道</option></select></div><div id="countryList" class="countryList"></div></section>
-<section id="stats" class="page"><div class="statsGrid"><div class="panel statCard"><strong id="statAnswered">0</strong><span>累計回答</span></div><div class="panel statCard"><strong id="statAccuracy">—</strong><span>自動採点正答率</span></div><div class="panel statCard"><strong id="statMastery">0%</strong><span>総合習熟</span></div></div><div class="sectionTitle">能力別</div><div id="skillRows" class="panel skillRows"></div><div class="sectionTitle">復習優先</div><div id="weakList" class="panel weakList"></div><div class="sectionTitle">設定</div><div class="panel settings"><div class="setting"><span>選択問題の正解後も自己評価する</span><input id="rateAfterChoice" type="checkbox" onchange="saveSettings()"></div><div class="setting"><span>学習データ</span><button class="danger" onclick="resetProgress()">初期化</button></div></div></section>
+<section id="stats" class="page"><div class="statsGrid"><div class="panel statCard"><strong id="statAnswered">0</strong><span>累計自己評価</span></div><div class="panel statCard"><strong id="statAccuracy">—</strong><span>「覚えていた」率</span></div><div class="panel statCard"><strong id="statMastery">0%</strong><span>総合習熟</span></div></div><div class="sectionTitle">能力別</div><div id="skillRows" class="panel skillRows"></div><div class="sectionTitle">復習優先</div><div id="weakList" class="panel weakList"></div><div class="sectionTitle">設定</div><div class="panel settings"><div class="setting"><span>学習データ</span><button class="danger" onclick="resetProgress()">初期化</button></div></div></section>
 </main>
 <nav class="bottom"><button data-page="home" class="active" onclick="go('home')"><span>⌂</span>学習</button><button data-page="map" onclick="go('map')"><span>⌖</span>地図</button><button data-page="list" onclick="go('list')"><span>☷</span>一覧</button><button data-page="stats" onclick="go('stats')"><span>◫</span>記録</button></nav>
 </div>
 <div id="detailModal" class="modal" onclick="if(event.target===this)closeDetail()"><div class="sheet"><button class="close" onclick="closeDetail()">×</button><h2 id="dName"></h2><div id="dReading" class="furigana"></div><dl><dt>五畿七道</dt><dd id="dCircuit"></dd><dt>現在</dt><dd id="dModern"></dd><dt>関連</dt><dd id="dNote"></dd><dt>習熟度</dt><dd id="dMastery"></dd></dl><div id="dMap" class="sheetMap"></div></div></div>
-<div id="infoModal" class="modal" onclick="if(event.target===this)this.classList.remove('show')"><div class="sheet"><button class="close" onclick="document.getElementById('infoModal').classList.remove('show')">×</button><h2>この学習帳について</h2><p style="color:var(--muted);line-height:1.7;font-size:13px">令制国68国を対象に、国名・読み・地理・現在の都道府県・五畿七道を反復する個人用暗記帳です。学習記録はこのブラウザの localStorage にのみ保存されます。</p><p style="color:var(--muted);line-height:1.7;font-size:13px">位置学習には Wikimedia Commons の “Provinces of Japan” 地図を背景として使用し、その上に学習用マーカーを重ねています。</p></div></div>
+<div id="infoModal" class="modal" onclick="if(event.target===this)this.classList.remove('show')"><div class="sheet"><button class="close" onclick="document.getElementById('infoModal').classList.remove('show')">×</button><h2>この学習帳について</h2><p style="color:var(--muted);line-height:1.7;font-size:13px">令制国68国を対象にした自己申告式の暗記帳です。問題を見て想起し、タップして答えと解説を表示したあとに自己評価します。解説は評価するまで消えません。</p></div></div>
 <script src="oldcountry/app.js"></script>
+<script src="oldcountry/recall.js"></script>
 </body>
 </html>
