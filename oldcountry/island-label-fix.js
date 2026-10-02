@@ -5,22 +5,22 @@ window.injectIslandLabel=function(svg,label,xRatio,yRatio){
   const width=vb[2]||960;
   const height=vb[3]||1003;
 
-  // Iki sits east-southeast of Tsushima and north of Chikuzen.
-  // The previous .095 x-ratio placed it noticeably too far west.
+  // Coordinates are aligned to the actual island shapes in the Wikimedia base map.
+  // Iki: the small island north-west of Chikuzen.
+  // Tsushima: the long island farther north-west between Kyushu and the Korean peninsula.
   if(label==='壱岐'){
-    xRatio=.128;
-    yRatio=.789;
+    xRatio=.075;
+    yRatio=.770;
   }else if(label==='対馬'){
-    xRatio=.063;
-    yRatio=.738;
+    xRatio=.046;
+    yRatio=.713;
   }
 
   const x=(vb[0]||0)+width*xRatio;
   const y=(vb[1]||0)+height*yRatio;
   const ns='http://www.w3.org/2000/svg';
 
-  // By this point the ordinary province labels have already been translated.
-  // Clone one of them so font family, size, weight and any SVG class/style stay identical.
+  // Clone an existing nearby province label so typography stays identical.
   const reference=[...svg.querySelectorAll('text')].find(node=>{
     const t=(node.textContent||'').trim();
     return t==='筑前'||t==='肥前'||t==='長門'||t==='周防';
@@ -42,7 +42,6 @@ window.injectIslandLabel=function(svg,label,xRatio,yRatio){
   text.setAttribute('text-anchor','middle');
   text.textContent=label;
 
-  // Prefer the same label group when it has no coordinate transform, preserving inherited styling.
   const parent=reference&&reference.parentElement&&!reference.parentElement.getAttribute('transform')
     ? reference.parentElement
     : svg;
